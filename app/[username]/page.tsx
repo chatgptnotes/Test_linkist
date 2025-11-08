@@ -76,6 +76,8 @@ interface ProfileData {
   backgroundImage: string | null;
   showProfilePhoto: boolean;
   showBackgroundImage: boolean;
+  // Services
+  services?: Array<{ id: string; title: string; description: string; pricing: string; category: string; showPublicly?: boolean }>;
 }
 
 export default function ProfilePreviewPage() {
@@ -259,7 +261,7 @@ export default function ProfilePreviewPage() {
   };
 
   // Generate and download vCard for saving to contacts
-  const handleSaveToContacts = () => {
+  const handleSaveToContacts = async () => {
     if (!profileData) return;
 
     // Create vCard format (v3.0 for maximum compatibility)
@@ -281,16 +283,54 @@ export default function ProfilePreviewPage() {
       'END:VCARD'
     ].filter(line => line).join('\n');
 
-    // Create blob and download
+    // Create blob
     const blob = new Blob([vCard], { type: 'text/vcard;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${profileData.firstName}-${profileData.lastName}.vcf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    const fileName = `${profileData.firstName}-${profileData.lastName}.vcf`;
+
+    // Try Web Share API first (works on mobile browsers including Chrome iOS)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], fileName, { type: 'text/vcard;charset=utf-8' });
+
+        // Check if files can be shared
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `${profileData.firstName} ${profileData.lastName} Contact`,
+            text: `Save ${profileData.firstName} ${profileData.lastName} to your contacts`
+          });
+          return; // Exit if sharing was successful
+        }
+      } catch (error: any) {
+        // If user cancels the share, don't show error
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.log('Web Share API not available or failed, falling back to download');
+      }
+    }
+
+    // Fallback: Traditional download method (for desktop and browsers that don't support Web Share API)
+    try {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+
+      // For iOS devices, open in new tab as additional fallback
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        link.target = '_blank';
+      }
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download contact:', error);
+      alert('Unable to save contact. Please try again or use a different browser.');
+    }
   };
 
   if (loading) {
@@ -494,6 +534,41 @@ export default function ProfilePreviewPage() {
               <PersonAdd className="w-5 h-5" />
               Save to Contacts
             </button>
+
+            {/* Services Section */}
+            {profileData.services && profileData.services.filter(s => s.showPublicly !== false).length > 0 && (
+              <div className="mb-6 sm:mb-8">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Services</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {profileData.services
+                    .filter(service => service.showPublicly !== false)
+                    .map((service) => (
+                      <div
+                        key={service.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="text-base font-semibold text-gray-900">{service.title}</h4>
+                          {service.category && (
+                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                              {service.category}
+                            </span>
+                          )}
+                        </div>
+                        {service.description && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-3">{service.description}</p>
+                        )}
+                        {service.pricing && (
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                            <span className="text-xs text-gray-500">Pricing</span>
+                            <span className="text-sm font-semibold text-red-600">{service.pricing}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
 
             {/* Social Media Links */}
             {(profileData.showLinkedin || profileData.showInstagram || profileData.showFacebook ||

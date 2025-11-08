@@ -42,6 +42,14 @@ export async function GET(
       );
     }
 
+    // Fetch services for this profile
+    const { data: services } = await supabase
+      .from('profile_services')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
     // Transform database profile to frontend format
     const socialLinks = profile.social_links || {};
     const preferences = profile.preferences || {};
@@ -74,6 +82,15 @@ export async function GET(
       // Include visibility preferences
       preferences: preferences,
       display_settings: profile.display_settings || {},
+      // Include services
+      services: (services || []).map(service => ({
+        id: service.id.toString(),
+        title: service.title,
+        description: service.description || '',
+        pricing: service.pricing || '',
+        category: service.category || '',
+        showPublicly: true // Only active services are fetched
+      }))
     };
 
     // Track profile view (optional - add analytics here)

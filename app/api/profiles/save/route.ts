@@ -193,6 +193,44 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [POST /api/profiles/save] Profile saved successfully:', savedProfile.id)
 
+    // Save services if provided
+    if (data.services && Array.isArray(data.services)) {
+      console.log('💼 [POST /api/profiles/save] Saving services...', data.services.length)
+
+      // Delete existing services for this profile
+      await supabase
+        .from('profile_services')
+        .delete()
+        .eq('profile_id', savedProfile.id)
+
+      // Insert new services
+      if (data.services.length > 0) {
+        const servicesToInsert = data.services
+          .filter((service: any) => service.title) // Only save services with a title
+          .map((service: any, index: number) => ({
+            profile_id: savedProfile.id,
+            title: service.title,
+            description: service.description || '',
+            pricing: service.pricing || '',
+            category: service.category || '',
+            is_active: service.showPublicly !== false,
+            display_order: index
+          }))
+
+        if (servicesToInsert.length > 0) {
+          const { error: servicesError } = await supabase
+            .from('profile_services')
+            .insert(servicesToInsert)
+
+          if (servicesError) {
+            console.error('❌ [POST /api/profiles/save] Error saving services:', servicesError)
+          } else {
+            console.log('✅ [POST /api/profiles/save] Services saved successfully')
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Profile saved successfully',

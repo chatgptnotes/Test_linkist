@@ -41,6 +41,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Fetch services for this profile
+    const { data: services } = await supabase
+      .from('profile_services')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .order('display_order', { ascending: true });
+
     // Transform database fields to match frontend expectations
     const transformedProfile = {
       email: profile.email,
@@ -78,6 +85,16 @@ export async function GET(request: NextRequest) {
 
       // Founder member
       isFounderMember: profile.is_founder_member,
+
+      // Services
+      services: (services || []).map(service => ({
+        id: service.id.toString(),
+        title: service.title,
+        description: service.description || '',
+        pricing: service.pricing || '',
+        category: service.category || '',
+        showPublicly: service.is_active
+      })),
 
       // Metadata
       userId: profile.user_id,

@@ -224,23 +224,70 @@ export default function PublicProfilePage() {
     }
   };
 
-  const handleDownloadVCard = () => {
-    // Generate and download vCard
+  const handleDownloadVCard = async () => {
+    if (!profile) return;
+
+    // Generate vCard with more complete information
     const vcard = `BEGIN:VCARD
 VERSION:3.0
-FN:${profile?.fullName}
-ORG:${profile?.company}
-TEL:${profile?.phone}
-EMAIL:${profile?.email}
-URL:${profile?.website}
+FN:${profile.fullName}
+ORG:${profile.company}
+TITLE:${profile.title}
+TEL:${profile.phone}
+EMAIL:${profile.email}
+URL:${profile.website}
+ADR;TYPE=WORK:;;${profile.location};;;;
+NOTE:${profile.bio?.replace(/\n/g, '\\n') || ''}
 END:VCARD`;
 
-    const blob = new Blob([vcard], { type: 'text/vcard' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${profile?.fullName?.replace(' ', '_')}.vcf`;
-    a.click();
+    // Create blob
+    const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+    const fileName = `${profile.fullName.replace(' ', '_')}.vcf`;
+
+    // Try Web Share API first (works on mobile browsers including Chrome iOS)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], fileName, { type: 'text/vcard;charset=utf-8' });
+
+        // Check if files can be shared
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `${profile.fullName} Contact`,
+            text: `Save ${profile.fullName} to your contacts`
+          });
+          return; // Exit if sharing was successful
+        }
+      } catch (error: any) {
+        // If user cancels the share, don't show error
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.log('Web Share API not available or failed, falling back to download');
+      }
+    }
+
+    // Fallback: Traditional download method (for desktop and browsers that don't support Web Share API)
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+
+      // For iOS devices, open in new tab as additional fallback
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        a.target = '_blank';
+      }
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download contact:', error);
+      alert('Unable to save contact. Please try again or use a different browser.');
+    }
   };
 
   if (loading) {

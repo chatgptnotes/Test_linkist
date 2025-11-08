@@ -36,7 +36,7 @@ import YouTubeIcon from '@mui/icons-material/YouTube';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Leaderboard } from '@mui/icons-material';
+import { Leaderboard, RoomService } from '@mui/icons-material';
 
 // Icon aliases
 const Person = PersonIcon;
@@ -58,6 +58,7 @@ const YouTube = YouTubeIcon;
 const Search = SearchIcon;
 const Edit = EditIcon;
 const Trash = DeleteIcon;
+const Service = RoomService;
 
 interface ProfileData {
   // Basic Information
@@ -119,6 +120,9 @@ interface ProfileData {
 
   // Certifications & Documents
   certifications: Array<{ id: string; name: string; url: string; size: number; type: string }>;
+
+  // Services
+  services: Array<{ id: string; title: string; description: string; pricing: string; category: string; showPublicly: boolean }>;
 }
 
 // Job title options with categories
@@ -300,7 +304,7 @@ function ProfileBuilderContent() {
   const searchParams = useSearchParams();
   const profileId = searchParams.get('id');
 
-  const [activeSection, setActiveSection] = useState<'basic' | 'professional' | 'social' | 'media-photo' | 'media-gallery'>('basic');
+  const [activeSection, setActiveSection] = useState<'basic' | 'professional' | 'service' | 'social' | 'media-photo' | 'media-gallery'>('basic');
   const [skillInput, setSkillInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -371,7 +375,8 @@ function ProfileBuilderContent() {
 
     photos: [],
     videos: [],
-    certifications: []
+    certifications: [],
+    services: []
   });
 
   // File input ref for photo uploads
@@ -1262,7 +1267,7 @@ function ProfileBuilderContent() {
   };
 
   // Handle Continue button click for navigation
-  const handleContinue = (nextSection: 'professional' | 'social' | 'media-photo') => {
+  const handleContinue = (nextSection: 'professional' | 'service' | 'social' | 'media-photo') => {
     if (activeSection === 'basic' && !validateBasicInfo()) {
       return;
     }
@@ -1473,6 +1478,7 @@ function ProfileBuilderContent() {
   const sections = [
     { id: 'basic' as const, icon: Person, label: 'Basic Information', description: 'Update your personal details and contact preferences' },
     { id: 'professional' as const, icon: Briefcase, label: 'Professional Information', description: 'Build your professional presence and showcase your expertise' },
+    { id: 'service' as const, icon: Service, label: 'Service', description: 'Showcase your services, products, and pricing information' },
     { id: 'social' as const, icon: Share, label: 'Social & Digital Presence', description: 'Connect your social media accounts and showcase your digital footprint' },
     { id: 'media-photo' as const, icon: Camera, label: 'Profile Photo & Banner', description: 'Upload and customize your profile visuals for a professional appearance' }
   ];
@@ -2351,7 +2357,7 @@ function ProfileBuilderContent() {
                 <div className="border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 rounded-b-lg">
                   <div className="flex justify-center sm:justify-end">
                     <button
-                      onClick={() => handleContinue('social')}
+                      onClick={() => handleContinue('service')}
                       className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors flex items-center justify-center gap-2 shadow-lg"
                       style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
                     >
@@ -2360,6 +2366,329 @@ function ProfileBuilderContent() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Service Section */}
+            {activeSection === 'service' && (
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="bg-gradient-to-r from-red-600 to-red-700 p-4 sm:p-6 rounded-t-lg">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-white/10 p-2 sm:p-3 rounded-lg">
+                      <Service className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-bold text-white">Service</h2>
+                      <p className="text-white/90 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">{sections.find(s => s.id === 'service')?.description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 sm:p-6 space-y-6">
+                  {/* Services List */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900">Your Services</h3>
+                      <button
+                        onClick={() => {
+                          const newService = {
+                            id: Date.now().toString(),
+                            title: '',
+                            description: '',
+                            pricing: '',
+                            category: '',
+                            showPublicly: true
+                          };
+                          setProfileData({
+                            ...profileData,
+                            services: [...profileData.services, newService]
+                          });
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Another Service
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Show at least one empty form if no services exist */}
+                        {profileData.services.length === 0 ? (
+                          <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-gray-900">Service 1</h4>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {/* Service Title */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Service Title *
+                                </label>
+                                <input
+                                  type="text"
+                                  value=""
+                                  onChange={(e) => {
+                                    const newService = {
+                                      id: Date.now().toString(),
+                                      title: e.target.value,
+                                      description: '',
+                                      pricing: '',
+                                      category: '',
+                                      showPublicly: true
+                                    };
+                                    setProfileData({ ...profileData, services: [newService] });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                  placeholder="e.g., Web Development"
+                                />
+                              </div>
+
+                              {/* Service Category */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Category / Type *
+                                </label>
+                                <input
+                                  type="text"
+                                  value=""
+                                  onChange={(e) => {
+                                    if (profileData.services.length === 0) {
+                                      const newService = {
+                                        id: Date.now().toString(),
+                                        title: '',
+                                        description: '',
+                                        pricing: '',
+                                        category: e.target.value,
+                                        showPublicly: true
+                                      };
+                                      setProfileData({ ...profileData, services: [newService] });
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                  placeholder="e.g., Consulting, Development, Design"
+                                />
+                              </div>
+
+                              {/* Service Pricing */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Pricing *
+                                </label>
+                                <input
+                                  type="text"
+                                  value=""
+                                  onChange={(e) => {
+                                    if (profileData.services.length === 0) {
+                                      const newService = {
+                                        id: Date.now().toString(),
+                                        title: '',
+                                        description: '',
+                                        pricing: e.target.value,
+                                        category: '',
+                                        showPublicly: true
+                                      };
+                                      setProfileData({ ...profileData, services: [newService] });
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                  placeholder="e.g., $100/hour, Contact for pricing"
+                                />
+                              </div>
+
+                              {/* Show Publicly Toggle */}
+                              <div className="flex items-end">
+                                <div className="flex items-center gap-2">
+                                  <label className="flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={true}
+                                      onChange={(e) => {
+                                        if (profileData.services.length === 0) {
+                                          const newService = {
+                                            id: Date.now().toString(),
+                                            title: '',
+                                            description: '',
+                                            pricing: '',
+                                            category: '',
+                                            showPublicly: e.target.checked
+                                          };
+                                          setProfileData({ ...profileData, services: [newService] });
+                                        }
+                                      }}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                  </label>
+                                  <span className="text-sm text-gray-700">Show on profile</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Service Description */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Description
+                              </label>
+                              <textarea
+                                value=""
+                                onChange={(e) => {
+                                  if (profileData.services.length === 0) {
+                                    const newService = {
+                                      id: Date.now().toString(),
+                                      title: '',
+                                      description: e.target.value,
+                                      pricing: '',
+                                      category: '',
+                                      showPublicly: true
+                                    };
+                                    setProfileData({ ...profileData, services: [newService] });
+                                  }
+                                }}
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
+                                placeholder="Describe your service..."
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          profileData.services.map((service, index) => (
+                          <div key={service.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-gray-900">Service {index + 1}</h4>
+                              <button
+                                onClick={() => {
+                                  setProfileData({
+                                    ...profileData,
+                                    services: profileData.services.filter(s => s.id !== service.id)
+                                  });
+                                }}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {/* Service Title */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Service Title *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={service.title}
+                                  onChange={(e) => {
+                                    const updatedServices = profileData.services.map(s =>
+                                      s.id === service.id ? { ...s, title: e.target.value } : s
+                                    );
+                                    setProfileData({ ...profileData, services: updatedServices });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                  placeholder="e.g., Web Development"
+                                />
+                              </div>
+
+                              {/* Service Category */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Category / Type *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={service.category}
+                                  onChange={(e) => {
+                                    const updatedServices = profileData.services.map(s =>
+                                      s.id === service.id ? { ...s, category: e.target.value } : s
+                                    );
+                                    setProfileData({ ...profileData, services: updatedServices });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                  placeholder="e.g., Consulting, Development, Design"
+                                />
+                              </div>
+
+                              {/* Service Pricing */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Pricing *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={service.pricing}
+                                  onChange={(e) => {
+                                    const updatedServices = profileData.services.map(s =>
+                                      s.id === service.id ? { ...s, pricing: e.target.value } : s
+                                    );
+                                    setProfileData({ ...profileData, services: updatedServices });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                  placeholder="e.g., $100/hour, Contact for pricing"
+                                />
+                              </div>
+
+                              {/* Show Publicly Toggle */}
+                              <div className="flex items-end">
+                                <div className="flex items-center gap-2">
+                                  <label className="flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={service.showPublicly}
+                                      onChange={(e) => {
+                                        const updatedServices = profileData.services.map(s =>
+                                          s.id === service.id ? { ...s, showPublicly: e.target.checked } : s
+                                        );
+                                        setProfileData({ ...profileData, services: updatedServices });
+                                      }}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                  </label>
+                                  <span className="text-sm text-gray-700">Show on profile</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Service Description */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Description
+                              </label>
+                              <textarea
+                                value={service.description}
+                                onChange={(e) => {
+                                  const updatedServices = profileData.services.map(s =>
+                                    s.id === service.id ? { ...s, description: e.target.value } : s
+                                  );
+                                  setProfileData({ ...profileData, services: updatedServices });
+                                }}
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
+                                placeholder="Describe your service..."
+                              />
+                            </div>
+                          </div>
+                        ))
+                        )}
+                      </div>
+                  </div>
+
+                  {/* Continue Button - Fixed Bottom */}
+                  <div className="border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 rounded-b-lg">
+                    <div className="flex justify-center sm:justify-end">
+                      <button
+                        onClick={() => handleContinue('social')}
+                        className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors flex items-center justify-center gap-2 shadow-lg"
+                        style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+                      >
+                        Continue
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
