@@ -50,9 +50,34 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Found', profiles.length, 'profile(s) for user')
 
+    // Fetch services for each profile
+    const profilesWithServices = await Promise.all(
+      profiles.map(async (profile: any) => {
+        const { data: services } = await supabase
+          .from('profile_services')
+          .select('*')
+          .eq('profile_id', profile.id)
+          .order('display_order', { ascending: true })
+
+        return {
+          ...profile,
+          services: (services || []).map(service => ({
+            id: service.id.toString(),
+            title: service.title,
+            description: service.description || '',
+            pricing: service.pricing || '',
+            category: service.category || '',
+            showPublicly: service.is_active
+          }))
+        }
+      })
+    )
+
+    console.log('✅ Loaded services for all profiles')
+
     return NextResponse.json({
       success: true,
-      profiles: profiles
+      profiles: profilesWithServices
     })
   } catch (error) {
     console.error('Error fetching profiles:', error)

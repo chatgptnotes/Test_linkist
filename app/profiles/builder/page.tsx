@@ -910,7 +910,9 @@ function ProfileBuilderContent() {
                   url,
                   title: '',
                   showPublicly: true
-                })) : []
+                })) : [],
+                certifications: [],
+                services: Array.isArray(profileToEdit.services) ? profileToEdit.services : []
               };
 
               setProfileData(mappedProfile);
@@ -1011,7 +1013,7 @@ function ProfileBuilderContent() {
           console.log('✅ Profile data populated from localStorage with auto-detection');
         }
 
-        // Try to get user email from cookies
+        // Try to get user email from multiple sources
         const getCookie = (name: string) => {
           const value = `; ${document.cookie}`;
           const parts = value.split(`; ${name}=`);
@@ -1019,12 +1021,55 @@ function ProfileBuilderContent() {
           return null;
         };
 
-        const userEmail = getCookie('userEmail') || (nfcConfigStr ? JSON.parse(nfcConfigStr).email : null);
+        // Try multiple sources for user email
+        let userEmail = getCookie('userEmail');
 
-        console.log('👤 User email from cookie:', userEmail);
+        // Fallback to localStorage
+        if (!userEmail) {
+          const storedEmail = localStorage.getItem('userEmail');
+          if (storedEmail) {
+            userEmail = storedEmail;
+            console.log('📧 Email found in localStorage:', userEmail);
+          }
+        }
+
+        // Fallback to nfcConfig
+        if (!userEmail && nfcConfigStr) {
+          try {
+            const nfcConfig = JSON.parse(nfcConfigStr);
+            userEmail = nfcConfig.email;
+            console.log('📧 Email found in nfcConfig:', userEmail);
+          } catch (e) {
+            console.error('Error parsing nfcConfig for email:', e);
+          }
+        }
+
+        // Fallback to userProfile
+        if (!userEmail && userProfileStr) {
+          try {
+            const userProfile = JSON.parse(userProfileStr);
+            userEmail = userProfile.email;
+            console.log('📧 Email found in userProfile:', userEmail);
+          } catch (e) {
+            console.error('Error parsing userProfile for email:', e);
+          }
+        }
+
+        // Fallback to userContactData
+        if (!userEmail && userContactDataStr) {
+          try {
+            const userContactData = JSON.parse(userContactDataStr);
+            userEmail = userContactData.email;
+            console.log('📧 Email found in userContactData:', userEmail);
+          } catch (e) {
+            console.error('Error parsing userContactData for email:', e);
+          }
+        }
+
+        console.log('👤 Final user email:', userEmail);
 
         if (!userEmail) {
-          console.log('⚠️ No user email found in cookies - user needs to login first');
+          console.log('⚠️ No user email found in any source');
           return;
         }
 
@@ -1118,7 +1163,8 @@ function ProfileBuilderContent() {
 
             photos: prefs.photos || [],
             videos: prefs.videos || [],
-            certifications: prefs.certifications || []
+            certifications: prefs.certifications || [],
+            services: prefs.services || []
           };
 
           console.log('🗺️ Mapped data:', mappedData);
@@ -1348,6 +1394,7 @@ function ProfileBuilderContent() {
           photos: profileData.photos,
           videos: profileData.videos,
           certifications: profileData.certifications,
+          services: profileData.services,
         }),
       });
 
@@ -1355,6 +1402,11 @@ function ProfileBuilderContent() {
 
       if (result.success) {
         console.log('✅ Profile saved successfully:', result);
+
+        // Store email in localStorage for future edits
+        localStorage.setItem('userEmail', profileData.primaryEmail);
+        console.log('📧 Email saved to localStorage:', profileData.primaryEmail);
+
         showToast('Profile saved successfully!', 'success');
 
         // Save to localStorage for dashboard display
