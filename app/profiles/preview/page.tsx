@@ -77,6 +77,15 @@ interface ProfileData {
   backgroundImage: string | null;
   showProfilePhoto: boolean;
   showBackgroundImage: boolean;
+  // Services
+  services?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    pricing: string;
+    category: string;
+    showPublicly?: boolean;
+  }>;
 }
 
 export default function ProfilePreviewPage() {
@@ -174,9 +183,12 @@ export default function ProfilePreviewPage() {
             backgroundImage: dbProfile.background_image_url,
             showProfilePhoto: dbProfile.preferences?.showProfilePhoto ?? true,
             showBackgroundImage: dbProfile.preferences?.showBackgroundImage ?? true,
+            // Services
+            services: dbProfile.services || [],
           };
 
           console.log('✅ Mapped profile data for preview');
+          console.log('📋 Services loaded:', dbProfile.services?.length || 0);
           setProfileData(mappedProfile);
 
           // Set customUrl from database if not already set from localStorage
@@ -668,6 +680,31 @@ export default function ProfilePreviewPage() {
                       Dribbble
                     </a>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Services Section */}
+            {profileData.services && profileData.services.filter(s => s.showPublicly !== false).length > 0 && (
+              <div className="mb-6 sm:mb-8">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Services</h3>
+                <div className="space-y-3">
+                  {profileData.services.filter(s => s.showPublicly !== false).map((service) => (
+                    <div
+                      key={service.id}
+                      className="flex items-start justify-between gap-4 py-2"
+                    >
+                      <div className="flex-1">
+                        <h4 className="text-sm sm:text-base font-medium text-gray-900">{service.title}</h4>
+                        {service.description && (
+                          <p className="text-xs sm:text-sm text-gray-600 mt-1">{service.description}</p>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-sm sm:text-base text-gray-600">{service.pricing}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

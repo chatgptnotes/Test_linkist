@@ -2441,7 +2441,7 @@ function ProfileBuilderContent() {
                 <div className="p-4 sm:p-6 space-y-6">
                   {/* Services List */}
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between gap-2 mb-4">
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900">Your Services</h3>
                       <button
                         onClick={() => {
@@ -2458,10 +2458,10 @@ function ProfileBuilderContent() {
                             services: [...profileData.services, newService]
                           });
                         }}
-                        className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium whitespace-nowrap"
                       >
                         <Plus className="w-4 h-4" />
-                        Add Another Service
+                        Add that
                       </button>
                     </div>
 

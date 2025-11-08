@@ -110,6 +110,16 @@ interface ProfileData {
     image?: string;
   }>;
 
+  // Services
+  services?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    pricing: string;
+    category: string;
+    showPublicly?: boolean;
+  }>;
+
   // Settings
   theme?: 'default' | 'dark' | 'minimal' | 'creative';
   accentColor?: string;
@@ -191,6 +201,32 @@ export default function PublicProfilePage() {
             role: 'CTO at TechCorp',
             content: 'John is an exceptional leader with a unique vision for technology innovation.',
             image: '/api/placeholder/60/60'
+          }
+        ],
+        services: [
+          {
+            id: '1',
+            title: 'UX/UI Design Consultation',
+            description: 'Expert consultation on user experience and interface design for your digital products.',
+            pricing: 'AED 850/hr',
+            category: 'Design',
+            showPublicly: true
+          },
+          {
+            id: '2',
+            title: 'Mobile App Design',
+            description: 'Complete mobile application design from wireframes to final UI.',
+            pricing: 'Starting at AED 5,000',
+            category: 'Design',
+            showPublicly: true
+          },
+          {
+            id: '3',
+            title: 'Design System Creation',
+            description: 'Build comprehensive design systems for scalable product development.',
+            pricing: 'Contact for pricing',
+            category: 'Design',
+            showPublicly: true
           }
         ],
         theme: 'default',
@@ -528,6 +564,31 @@ END:VCARD`;
                           </a>
                         )}
                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Services Section */}
+          {profile.services && profile.services.filter(s => s.showPublicly !== false).length > 0 && (
+            <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mt-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Services</h2>
+              <div className="space-y-3">
+                {profile.services.filter(s => s.showPublicly !== false).map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex items-start justify-between gap-4 py-2"
+                  >
+                    <div className="flex-1">
+                      <h3 className="text-base font-medium text-gray-900">{service.title}</h3>
+                      {service.description && (
+                        <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-base text-gray-600">{service.pricing}</p>
                     </div>
                   </div>
                 ))}
