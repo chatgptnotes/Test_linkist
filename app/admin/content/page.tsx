@@ -53,75 +53,131 @@ export default function ContentPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    status: 'draft' as 'published' | 'draft' | 'archived',
+    content: ''
+  });
 
-  // Mock data for demo
+  // Fetch content from API
   useEffect(() => {
-    setTimeout(() => {
-      setContent([
-        {
-          id: '1',
-          title: 'About Linkist NFC Technology',
-          type: 'page',
-          status: 'published',
-          author: 'Admin',
-          createdAt: '2024-01-15T10:00:00Z',
-          updatedAt: '2024-01-20T14:30:00Z',
-          views: 1247,
-          excerpt: 'Learn about our cutting-edge NFC technology and how it revolutionizes business networking.',
-          featured: true
-        },
-        {
-          id: '2',
-          title: 'How to Set Up Your NFC Card',
-          type: 'post',
-          status: 'published',
-          author: 'Support Team',
-          createdAt: '2024-01-10T09:00:00Z',
-          updatedAt: '2024-01-18T11:15:00Z',
-          views: 892,
-          excerpt: 'Step-by-step guide to configure your new Linkist NFC business card.',
-          featured: false
-        },
-        {
-          id: '3',
-          title: 'Premium Card Collection 2024',
-          type: 'product',
-          status: 'draft',
-          author: 'Product Team',
-          createdAt: '2024-01-20T16:00:00Z',
-          updatedAt: '2024-01-25T10:45:00Z',
-          views: 156,
-          excerpt: 'Introducing our new premium collection with advanced materials and designs.',
-          featured: false
-        },
-        {
-          id: '4',
-          title: 'NFC Card Demo Video',
-          type: 'media',
-          status: 'published',
-          author: 'Marketing',
-          createdAt: '2024-01-12T14:00:00Z',
-          updatedAt: '2024-01-16T09:30:00Z',
-          views: 2134,
-          excerpt: 'Watch how easy it is to share your contact information with a simple tap.',
-          featured: true
-        },
-        {
-          id: '5',
-          title: 'Terms of Service',
-          type: 'page',
-          status: 'published',
-          author: 'Legal Team',
-          createdAt: '2024-01-05T12:00:00Z',
-          updatedAt: '2024-01-22T16:20:00Z',
-          views: 543,
-          excerpt: 'Terms and conditions for using Linkist NFC services.',
-          featured: false
-        }
-      ]);
+    fetchContent();
+  }, [statusFilter]);
+
+  const fetchContent = async () => {
+    try {
+      setLoading(true);
+      const url = new URL('/api/admin/content', window.location.origin);
+      if (statusFilter) {
+        url.searchParams.append('status', statusFilter);
+      }
+
+      const response = await fetch(url.toString());
+      if (response.ok) {
+        const data = await response.json();
+        setContent(data.content || []);
+      } else {
+        console.error('Failed to fetch content');
+      }
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  // Handle View button
+  const handleView = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/content/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedContent(data.content);
+        setShowViewModal(true);
+      } else {
+        alert('Failed to load content details');
+      }
+    } catch (error) {
+      console.error('Error loading content:', error);
+      alert('Error loading content');
+    }
+  };
+
+  // Handle Edit button
+  const handleEdit = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/content/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedContent(data.content);
+        setEditFormData({
+          title: data.content.title || '',
+          status: data.content.status || 'draft',
+          content: data.content.content || ''
+        });
+        setShowEditModal(true);
+      } else {
+        alert('Failed to load content for editing');
+      }
+    } catch (error) {
+      console.error('Error loading content:', error);
+      alert('Error loading content');
+    }
+  };
+
+  // Handle Save Edit
+  const handleSaveEdit = async () => {
+    if (!selectedContent) return;
+
+    try {
+      const response = await fetch(`/api/admin/content/${selectedContent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editFormData),
+      });
+
+      if (response.ok) {
+        alert('Content updated successfully');
+        setShowEditModal(false);
+        fetchContent(); // Refresh the list
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update content');
+      }
+    } catch (error) {
+      console.error('Error updating content:', error);
+      alert('Error updating content');
+    }
+  };
+
+  // Handle Delete button
+  const handleDelete = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete "${title}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/content/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert('Content deleted successfully');
+        fetchContent(); // Refresh the list
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete content');
+      }
+    } catch (error) {
+      console.error('Error deleting content:', error);
+      alert('Error deleting content');
+    }
+  };
 
   const filteredContent = content.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -144,7 +200,7 @@ export default function ContentPage() {
     switch (type) {
       case 'page': return Globe;
       case 'post': return FileText;
-      case 'media': return type === 'video' ? Video : Image;
+      case 'media': return Image;
       case 'product': return Tag;
       default: return FileText;
     }
@@ -377,13 +433,25 @@ export default function ContentPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800">
+                            <button
+                              onClick={() => handleView(item.id)}
+                              className="text-blue-600 hover:text-blue-800"
+                              title="View"
+                            >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button className="text-gray-600 hover:text-gray-800">
+                            <button
+                              onClick={() => handleEdit(item.id)}
+                              className="text-gray-600 hover:text-gray-800"
+                              title="Edit"
+                            >
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-800">
+                            <button
+                              onClick={() => handleDelete(item.id, item.title)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </button>
                             <button className="text-gray-600 hover:text-gray-800">
@@ -399,6 +467,153 @@ export default function ContentPage() {
             </table>
           </div>
         </div>
+
+        {/* View Modal */}
+        {showViewModal && selectedContent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">{selectedContent.title}</h2>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <span className={`inline-flex mt-1 items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedContent.status)}`}>
+                      {selectedContent.status}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Slug</label>
+                    <p className="mt-1 text-sm text-gray-900">{selectedContent.slug}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Created</label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {new Date(selectedContent.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Updated</label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {new Date(selectedContent.updated_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Content</label>
+                  <div className="mt-1 p-4 bg-gray-50 rounded border border-gray-200">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                      {selectedContent.content || 'No content'}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedContent.meta_title && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Meta Title</label>
+                    <p className="mt-1 text-sm text-gray-900">{selectedContent.meta_title}</p>
+                  </div>
+                )}
+
+                {selectedContent.meta_description && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Meta Description</label>
+                    <p className="mt-1 text-sm text-gray-900">{selectedContent.meta_description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && selectedContent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Edit Content</h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={editFormData.title}
+                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="Enter title"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={editFormData.status}
+                    onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as 'published' | 'draft' | 'archived' })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                  <textarea
+                    value={editFormData.content}
+                    onChange={(e) => setEditFormData({ ...editFormData, content: e.target.value })}
+                    rows={10}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="Enter content"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-6 py-2.5 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300 font-semibold border border-gray-300"
+                  style={{ color: '#1f2937' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="px-6 py-2.5 bg-red-600 text-white rounded-md hover:bg-red-700 font-semibold shadow-md"
+                  style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

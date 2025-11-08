@@ -116,6 +116,9 @@ interface ProfileData {
   // Media Gallery
   photos: Array<{ id: string; url: string; title: string; showPublicly: boolean }>;
   videos: Array<{ id: string; url: string; title: string; showPublicly: boolean }>;
+
+  // Certifications & Documents
+  certifications: Array<{ id: string; name: string; url: string; size: number; type: string }>;
 }
 
 // Job title options with categories
@@ -367,7 +370,8 @@ function ProfileBuilderContent() {
     showBackgroundImage: true,
 
     photos: [],
-    videos: []
+    videos: [],
+    certifications: []
   });
 
   // File input ref for photo uploads
@@ -735,6 +739,53 @@ function ProfileBuilderContent() {
     event.target.value = '';
   };
 
+  // Handle certification file upload
+  const handleCertificationUpload = async (file: File) => {
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+
+    // Validate file type
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid file (PDF, PNG, JPG)');
+      return;
+    }
+
+    // Validate file size
+    if (file.size > MAX_SIZE) {
+      toast.error('File size must be under 5MB');
+      return;
+    }
+
+    try {
+      toast.loading('Uploading certification...', { id: 'cert-upload' });
+
+      // For now, create a temporary URL (similar to photo upload)
+      // TODO: Upload to Supabase Storage
+      const fileUrl = URL.createObjectURL(file);
+
+      // Create certification object
+      const newCertification = {
+        id: `cert-${Date.now()}`,
+        name: file.name,
+        url: fileUrl,
+        size: file.size,
+        type: file.type
+      };
+
+      // Add to certifications array
+      setProfileData({
+        ...profileData,
+        certifications: [...profileData.certifications, newCertification]
+      });
+
+      toast.success('Certification uploaded successfully', { id: 'cert-upload' });
+
+    } catch (error) {
+      console.error('Error uploading certification:', error);
+      toast.error('Failed to upload certification', { id: 'cert-upload' });
+    }
+  };
+
   // Fetch existing profile data on component mount
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -1061,7 +1112,8 @@ function ProfileBuilderContent() {
             showBackgroundImage: prefs.showBackgroundImage ?? true,
 
             photos: prefs.photos || [],
-            videos: prefs.videos || []
+            videos: prefs.videos || [],
+            certifications: prefs.certifications || []
           };
 
           console.log('🗺️ Mapped data:', mappedData);
@@ -1169,6 +1221,7 @@ function ProfileBuilderContent() {
           showBackgroundImage: toggleName === 'showBackgroundImage' ? value : profileData.showBackgroundImage,
           photos: profileData.photos,
           videos: profileData.videos,
+          certifications: profileData.certifications,
         }),
       });
 
@@ -1289,6 +1342,7 @@ function ProfileBuilderContent() {
           showBackgroundImage: profileData.showBackgroundImage,
           photos: profileData.photos,
           videos: profileData.videos,
+          certifications: profileData.certifications,
         }),
       });
 
@@ -2633,6 +2687,127 @@ function ProfileBuilderContent() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Certifications & Attachments */}
+                  <div className="mt-8">
+                    <div className="mb-4">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900">Certifications & Attachments</h3>
+                      <p className="text-sm text-gray-600 mt-1">Upload certificates, awards, or other documents to validate your skills.</p>
+                    </div>
+
+                    {/* File Upload Area */}
+                    <div
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-red-400 transition-colors cursor-pointer"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add('border-red-500', 'bg-red-50');
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('border-red-500', 'bg-red-50');
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('border-red-500', 'bg-red-50');
+                        const files = Array.from(e.dataTransfer.files);
+                        const validFiles = files.filter(file => {
+                          const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+                          const maxSize = 5 * 1024 * 1024; // 5MB
+                          return validTypes.includes(file.type) && file.size <= maxSize;
+                        });
+
+                        if (validFiles.length > 0) {
+                          for (const file of validFiles) {
+                            await handleCertificationUpload(file);
+                          }
+                        } else {
+                          toast.error('Please upload valid files (PDF, PNG, JPG) under 5MB');
+                        }
+                      }}
+                      onClick={() => document.getElementById('certification-upload')?.click()}
+                    >
+                      <input
+                        id="certification-upload"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          for (const file of files) {
+                            await handleCertificationUpload(file);
+                          }
+                          e.target.value = ''; // Reset input
+                        }}
+                      />
+                      <div className="flex flex-col items-center">
+                        <Upload className="h-12 w-12 text-gray-400 mb-3" />
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          Drag & drop files here or click to browse
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Supports: PDF, PNG, JPG (Max 5MB)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Uploaded Certifications List */}
+                    {profileData.certifications && profileData.certifications.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {profileData.certifications.map((cert) => (
+                          <div
+                            key={cert.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {/* File Icon */}
+                              <div className="flex-shrink-0">
+                                {cert.type === 'application/pdf' ? (
+                                  <svg className="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6"/>
+                                    <path d="M12 18v-6"/>
+                                    <path d="M9 15h6"/>
+                                  </svg>
+                                ) : (
+                                  <svg className="h-8 w-8 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6"/>
+                                    <path d="M12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                                    <path d="M21 15l-5-5-6 6-3-3-3 3"/>
+                                  </svg>
+                                )}
+                              </div>
+
+                              {/* File Info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {cert.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {(cert.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => {
+                                setProfileData({
+                                  ...profileData,
+                                  certifications: profileData.certifications.filter(c => c.id !== cert.id)
+                                });
+                                toast.success('Certification removed');
+                              }}
+                              className="flex-shrink-0 ml-2 text-red-600 hover:text-red-800 transition-colors"
+                            >
+                              <Trash className="h-5 w-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

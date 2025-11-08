@@ -35,15 +35,17 @@ const Smartphone = SmartphoneIcon;
 
 interface Product {
   id: string;
+  sku: string;
   name: string;
+  slug: string;
   description: string;
   price: number;
-  category: string;
-  stock: number;
-  status: 'active' | 'inactive' | 'draft';
+  category_id: string | null;
+  stock_quantity: number;
+  is_active: boolean;
   image?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface SubscriptionPlan {
@@ -75,6 +77,8 @@ export default function ProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     type: 'physical-digital' as 'physical-digital' | 'digital-with-app' | 'digital-only',
@@ -88,6 +92,16 @@ export default function ProductsPage() {
     allowed_countries: ['India', 'UAE', 'USA', 'UK'],
     display_order: 1
   });
+  const [productFormData, setProductFormData] = useState({
+    sku: '',
+    name: '',
+    slug: '',
+    description: '',
+    price: 0,
+    stock_quantity: 0,
+    is_active: true,
+    category_id: null as string | null
+  });
 
   // Mock products data
   useEffect(() => {
@@ -96,42 +110,21 @@ export default function ProductsPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    // Mock products (keeping existing data)
-    setProducts([
-      {
-        id: '1',
-        name: 'Premium NFC Card',
-        description: 'High-quality metal NFC business card with custom design',
-        price: 29.99,
-        category: 'NFC Cards',
-        stock: 150,
-        status: 'active',
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-01-20T14:30:00Z'
-      },
-      {
-        id: '2',
-        name: 'Standard NFC Card',
-        description: 'Classic plastic NFC card with contactless sharing',
-        price: 19.99,
-        category: 'NFC Cards',
-        stock: 300,
-        status: 'active',
-        createdAt: '2024-01-10T09:00:00Z',
-        updatedAt: '2024-01-18T11:15:00Z'
-      },
-      {
-        id: '3',
-        name: 'Wooden NFC Card',
-        description: 'Eco-friendly wooden NFC card with natural finish',
-        price: 34.99,
-        category: 'NFC Cards',
-        stock: 75,
-        status: 'active',
-        createdAt: '2024-01-20T16:00:00Z',
-        updatedAt: '2024-01-25T10:45:00Z'
+
+    // Fetch products from API
+    try {
+      const productResponse = await fetch('/api/admin/products');
+      if (productResponse.ok) {
+        const productData = await productResponse.json();
+        setProducts(productData.products || []);
+      } else {
+        console.error('Failed to fetch products');
+        setProducts([]);
       }
-    ]);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
+    }
 
     // Fetch plans from API
     try {
@@ -154,7 +147,9 @@ export default function ProductsPage() {
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !statusFilter || product.status === statusFilter;
+    const matchesStatus = !statusFilter ||
+      (statusFilter === 'active' && product.is_active) ||
+      (statusFilter === 'inactive' && !product.is_active);
     return matchesSearch && matchesStatus;
   });
 
@@ -349,11 +344,116 @@ export default function ProductsPage() {
 
   const totalItems = activeTab === 'products' ? products.length : plans.length;
   const activeItems = activeTab === 'products'
-    ? products.filter(p => p.status === 'active').length
+    ? products.filter(p => p.is_active).length
     : plans.filter(p => p.status === 'active').length;
   const avgPrice = activeTab === 'products'
     ? (products.reduce((sum, p) => sum + p.price, 0) / products.length || 0)
     : (plans.reduce((sum, p) => sum + p.price, 0) / plans.length || 0);
+
+  // Product CRUD handlers
+  const handleProductEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setProductFormData({
+      sku: product.sku,
+      name: product.name,
+      slug: product.slug,
+      description: product.description || '',
+      price: product.price,
+      stock_quantity: product.stock_quantity,
+      is_active: product.is_active,
+      category_id: product.category_id
+    });
+    setShowProductModal(true);
+  };
+
+  const handleProductDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/products?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        alert('Product deleted successfully');
+        fetchData();
+      } else {
+        alert('Failed to delete product');
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert('Failed to delete product');
+    }
+  };
+
+  const handleProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!productFormData.sku || !productFormData.name || !productFormData.slug) {
+      alert('Please fill all required fields (SKU, Name, Slug)');
+      return;
+    }
+
+    if (productFormData.price < 0) {
+      alert('Price cannot be negative');
+      return;
+    }
+
+    try {
+      const endpoint = '/api/admin/products';
+      const method = selectedProduct ? 'PUT' : 'POST';
+
+      const payload = {
+        ...(selectedProduct && { id: selectedProduct.id }),
+        sku: productFormData.sku,
+        name: productFormData.name,
+        slug: productFormData.slug,
+        description: productFormData.description,
+        price: productFormData.price,
+        stock_quantity: productFormData.stock_quantity,
+        is_active: productFormData.is_active,
+        category_id: productFormData.category_id
+      };
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        alert(selectedProduct ? 'Product updated successfully' : 'Product created successfully');
+        setShowProductModal(false);
+        setSelectedProduct(null);
+        resetProductForm();
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to save product');
+      }
+    } catch (error) {
+      console.error('Error saving product:', error);
+      alert('Failed to save product');
+    }
+  };
+
+  const resetProductForm = () => {
+    setProductFormData({
+      sku: '',
+      name: '',
+      slug: '',
+      description: '',
+      price: 0,
+      stock_quantity: 0,
+      is_active: true,
+      category_id: null
+    });
+  };
 
   return (
     <AdminLayout>
@@ -366,15 +466,23 @@ export default function ProductsPage() {
           </div>
           <button
             onClick={() => {
-              resetForm();
-              setSelectedPlan(null);
-              setShowAddModal(true);
+              if (activeTab === 'products') {
+                resetProductForm();
+                setSelectedProduct(null);
+                setShowProductModal(true);
+              } else {
+                resetForm();
+                setSelectedPlan(null);
+                setShowAddModal(true);
+              }
             }}
             style={{ backgroundColor: '#dc2626' }}
             className="flex items-center gap-2 px-6 py-2.5 text-white rounded-lg hover:bg-red-700 font-medium shadow-lg transition-all border-2 border-red-700"
           >
             <Plus className="h-5 w-5 text-white" />
-            <span className="text-white font-semibold">Add Plan</span>
+            <span className="text-white font-semibold">
+              {activeTab === 'products' ? 'Add Product' : 'Add Plan'}
+            </span>
           </button>
         </div>
 
@@ -441,7 +549,7 @@ export default function ProductsPage() {
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {activeTab === 'products'
-                    ? new Set(products.map(p => p.category)).size
+                    ? 1
                     : plans.filter(p => p.popular).length
                   }
                 </p>
@@ -555,28 +663,35 @@ export default function ProductsPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-900">{product.category}</span>
+                          <span className="text-sm text-gray-900">NFC Cards</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-gray-900">${product.price}</span>
+                          <span className="text-sm font-medium text-gray-900">${product.price.toFixed(2)}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm text-gray-900">{product.stock} units</span>
+                          <span className="text-sm text-gray-900">{product.stock_quantity} units</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(product.status)}`}>
-                            {product.status}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {product.is_active ? 'active' : 'inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800">
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button className="text-gray-600 hover:text-gray-800">
+                            <button
+                              onClick={() => handleProductEdit(product)}
+                              className="text-gray-600 hover:text-gray-800"
+                              title="Edit product"
+                            >
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-800">
+                            <button
+                              onClick={() => handleProductDelete(product.id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete product"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
@@ -905,6 +1020,165 @@ export default function ProductsPage() {
                       className="px-6 py-2.5 text-white rounded-lg hover:bg-red-700 font-semibold shadow-md"
                     >
                       {selectedPlan ? 'Update Plan' : 'Create Plan'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add/Edit Product Modal */}
+        {showProductModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {selectedProduct ? 'Edit Product' : 'Add New Product'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowProductModal(false);
+                      setSelectedProduct(null);
+                      resetProductForm();
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleProductSubmit} className="space-y-6">
+                  {/* Product SKU */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      SKU *
+                    </label>
+                    <input
+                      type="text"
+                      value={productFormData.sku}
+                      onChange={(e) => setProductFormData({ ...productFormData, sku: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="e.g., NFC-CARD-001"
+                      required
+                      disabled={!!selectedProduct}
+                    />
+                    {selectedProduct && (
+                      <p className="text-xs text-gray-500 mt-1">SKU cannot be changed after creation</p>
+                    )}
+                  </div>
+
+                  {/* Product Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={productFormData.name}
+                      onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="e.g., Premium NFC Card"
+                      required
+                    />
+                  </div>
+
+                  {/* Product Slug */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Slug *
+                    </label>
+                    <input
+                      type="text"
+                      value={productFormData.slug}
+                      onChange={(e) => setProductFormData({ ...productFormData, slug: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="e.g., premium-nfc-card"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">URL-friendly version (lowercase, use hyphens)</p>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={productFormData.description}
+                      onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      placeholder="Product description..."
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Price and Stock */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Price (USD) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={productFormData.price}
+                        onChange={(e) => setProductFormData({ ...productFormData, price: parseFloat(e.target.value) || 0 })}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        placeholder="29.99"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Stock Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        value={productFormData.stock_quantity}
+                        onChange={(e) => setProductFormData({ ...productFormData, stock_quantity: parseInt(e.target.value) || 0 })}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        placeholder="100"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Status */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={productFormData.is_active}
+                      onChange={(e) => setProductFormData({ ...productFormData, is_active: e.target.checked })}
+                      className="h-4 w-4 text-red-600 border-gray-300 rounded"
+                    />
+                    <label htmlFor="is_active" className="ml-2 text-sm text-gray-700">
+                      Active (visible to customers)
+                    </label>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProductModal(false);
+                        setSelectedProduct(null);
+                        resetProductForm();
+                      }}
+                      className="px-6 py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      style={{ backgroundColor: '#dc2626' }}
+                      className="px-6 py-2.5 text-white rounded-lg hover:bg-red-700 font-semibold shadow-md"
+                    >
+                      {selectedProduct ? 'Update Product' : 'Create Product'}
                     </button>
                   </div>
                 </form>

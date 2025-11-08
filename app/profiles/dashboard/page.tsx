@@ -55,6 +55,9 @@ export default function ProfileDashboard() {
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Check founding member status
+  const [isFoundingMember, setIsFoundingMember] = useState(false);
+  const [foundingMemberPlan, setFoundingMemberPlan] = useState<string | null>(null);
 
   useEffect(() => {
     // Load profiles from localStorage or API
@@ -134,18 +137,6 @@ export default function ProfileDashboard() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-      </div>
-    );
-  }
-
-  // Check founding member status
-  const [isFoundingMember, setIsFoundingMember] = useState(false);
-  const [foundingMemberPlan, setFoundingMemberPlan] = useState<string | null>(null);
-
   useEffect(() => {
     // Check founding member status from user data
     const checkFoundingMember = async () => {
@@ -162,6 +153,14 @@ export default function ProfileDashboard() {
     };
     checkFoundingMember();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
