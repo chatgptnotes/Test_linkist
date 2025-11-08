@@ -2610,17 +2610,40 @@ function ProfileBuilderContent() {
                           <div key={service.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium text-gray-900">Service {index + 1}</h4>
-                              <button
-                                onClick={() => {
-                                  setProfileData({
-                                    ...profileData,
-                                    services: profileData.services.filter(s => s.id !== service.id)
-                                  });
-                                }}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    const newService = {
+                                      id: Date.now().toString(),
+                                      title: '',
+                                      description: '',
+                                      pricing: '',
+                                      category: '',
+                                      showPublicly: true
+                                    };
+                                    setProfileData({
+                                      ...profileData,
+                                      services: [...profileData.services, newService]
+                                    });
+                                  }}
+                                  className="text-green-600 hover:text-green-700 p-1"
+                                  title="Add another service"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setProfileData({
+                                      ...profileData,
+                                      services: profileData.services.filter(s => s.id !== service.id)
+                                    });
+                                  }}
+                                  className="text-red-600 hover:text-red-700 p-1"
+                                  title="Delete service"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
