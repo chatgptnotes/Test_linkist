@@ -80,8 +80,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (useDatabaseOTP) {
-      // Generate OTP and store in database for development
-      const otp = generateMobileOTP();
+      // Use hardcoded OTP for testing if enabled, otherwise generate random OTP
+      const otp = useHardcodedOTP && process.env.HARDCODED_OTP
+        ? process.env.HARDCODED_OTP
+        : generateMobileOTP();
       const expiresAt = new Date(Date.now() + (10 * 60 * 1000)).toISOString();
 
       // Try to find user by phone number to link OTP
@@ -181,7 +183,9 @@ export async function POST(request: NextRequest) {
 
       // Fallback: Generate OTP and store in database
       console.log('⚠️ SMS failed, using database OTP as fallback');
-      const otp = generateMobileOTP();
+      const otp = process.env.USE_HARDCODED_OTP === 'true' && process.env.HARDCODED_OTP
+        ? process.env.HARDCODED_OTP
+        : generateMobileOTP();
       const expiresAt = new Date(Date.now() + (10 * 60 * 1000)).toISOString();
 
       // Try to find user by phone number to link OTP

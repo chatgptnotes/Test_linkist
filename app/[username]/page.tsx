@@ -26,6 +26,30 @@ import {
   PersonAdd
 } from '@mui/icons-material';
 
+// Currency symbols mapping
+const CURRENCIES = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'AED', symbol: 'AED', name: 'UAE Dirham' },
+  { code: 'SAR', symbol: 'SAR', name: 'Saudi Riyal' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+  { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' }
+];
+
 interface ProfileData {
   firstName: string;
   lastName: string;
@@ -77,7 +101,7 @@ interface ProfileData {
   showProfilePhoto: boolean;
   showBackgroundImage: boolean;
   // Services
-  services?: Array<{ id: string; title: string; description: string; pricing: string; category: string; showPublicly?: boolean }>;
+  services?: Array<{ id: string; title: string; description: string; pricing: string; currency?: string; category: string; showPublicly?: boolean }>;
 }
 
 export default function ProfilePreviewPage() {
@@ -169,6 +193,8 @@ export default function ProfilePreviewPage() {
             backgroundImage: dbProfile.coverImage || null,
             showProfilePhoto: prefs.showProfilePhoto ?? true,
             showBackgroundImage: prefs.showBackgroundImage ?? true,
+            // Services
+            services: dbProfile.services || [],
           };
 
           console.log('✅ Mapped profile data for preview');
@@ -561,7 +587,10 @@ export default function ProfilePreviewPage() {
                         {service.pricing && (
                           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                             <span className="text-xs text-gray-500">Pricing</span>
-                            <span className="text-sm font-semibold text-red-600">{service.pricing}</span>
+                            <span className="text-sm font-semibold text-red-600">
+                              {CURRENCIES.find(c => c.code === (service.currency || 'USD'))?.symbol || '$'}
+                              {service.pricing}
+                            </span>
                           </div>
                         )}
                       </div>

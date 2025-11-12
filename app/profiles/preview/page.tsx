@@ -27,6 +27,30 @@ import {
   Share
 } from '@mui/icons-material';
 
+// Currency symbols mapping
+const CURRENCIES = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'AED', symbol: 'AED', name: 'UAE Dirham' },
+  { code: 'SAR', symbol: 'SAR', name: 'Saudi Riyal' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+  { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' }
+];
+
 interface ProfileData {
   firstName: string;
   lastName: string;
@@ -83,6 +107,7 @@ interface ProfileData {
     title: string;
     description?: string;
     pricing: string;
+    currency?: string;
     category: string;
     showPublicly?: boolean;
   }>;
@@ -701,7 +726,10 @@ export default function ProfilePreviewPage() {
                         )}
                       </div>
                       <div className="flex-shrink-0 text-right">
-                        <p className="text-sm sm:text-base text-gray-600">{service.pricing}</p>
+                        <p className="text-sm sm:text-base text-gray-600">
+                          {CURRENCIES.find(c => c.code === (service.currency || 'USD'))?.symbol || '$'}
+                          {service.pricing}
+                        </p>
                       </div>
                     </div>
                   ))}

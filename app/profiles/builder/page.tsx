@@ -36,7 +36,7 @@ import YouTubeIcon from '@mui/icons-material/YouTube';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Leaderboard, RoomService } from '@mui/icons-material';
+import { Leaderboard, RoomService, BuildCircle } from '@mui/icons-material';
 
 // Icon aliases
 const Person = PersonIcon;
@@ -58,7 +58,7 @@ const YouTube = YouTubeIcon;
 const Search = SearchIcon;
 const Edit = EditIcon;
 const Trash = DeleteIcon;
-const Service = RoomService;
+const Service = BuildCircle;
 
 interface ProfileData {
   // Basic Information
@@ -122,7 +122,7 @@ interface ProfileData {
   certifications: Array<{ id: string; name: string; url: string; size: number; type: string }>;
 
   // Services
-  services: Array<{ id: string; title: string; description: string; pricing: string; category: string; showPublicly: boolean }>;
+  services: Array<{ id: string; title: string; description: string; pricing: string; currency: string; category: string; showPublicly: boolean }>;
 }
 
 // Job title options with categories
@@ -180,6 +180,30 @@ const INDUSTRIES = [
   'Government & Public Sector',
   'Nonprofit & NGOs',
   'Hospitality & Travel'
+];
+
+// Currency options
+const CURRENCIES = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'AED', symbol: 'AED', name: 'UAE Dirham' },
+  { code: 'SAR', symbol: 'SAR', name: 'Saudi Riyal' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+  { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' }
 ];
 
 // Sub-domain options with industry mapping
@@ -314,6 +338,7 @@ function ProfileBuilderContent() {
   const [showJobTitleDropdown, setShowJobTitleDropdown] = useState(false);
   const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
   const [showSubDomainDropdown, setShowSubDomainDropdown] = useState(false);
+  const [defaultCurrency, setDefaultCurrency] = useState('USD');
 
   // Upload progress states
   const [profilePhotoUploadProgress, setProfilePhotoUploadProgress] = useState(0);
@@ -1194,6 +1219,74 @@ function ProfileBuilderContent() {
       setProfileData(prev => ({ ...prev, whatsappNumber: prev.mobileNumber }));
     }
   }, [profileData.mobileNumber, useSameNumberForWhatsapp]);
+
+  // Detect user's location and set default currency
+  useEffect(() => {
+    const detectCurrency = async () => {
+      try {
+        // Try to detect timezone and map to currency
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let currency = 'USD'; // Default fallback
+
+        // Map common timezones to currencies
+        const timezoneToCurrency: { [key: string]: string } = {
+          // Europe
+          'Europe/London': 'GBP',
+          'Europe/Paris': 'EUR',
+          'Europe/Berlin': 'EUR',
+          'Europe/Rome': 'EUR',
+          'Europe/Madrid': 'EUR',
+          'Europe/Amsterdam': 'EUR',
+          'Europe/Brussels': 'EUR',
+          'Europe/Vienna': 'EUR',
+          'Europe/Stockholm': 'SEK',
+          'Europe/Oslo': 'NOK',
+          'Europe/Zurich': 'CHF',
+          // Asia
+          'Asia/Dubai': 'AED',
+          'Asia/Kolkata': 'INR',
+          'Asia/Mumbai': 'INR',
+          'Asia/Delhi': 'INR',
+          'Asia/Tokyo': 'JPY',
+          'Asia/Shanghai': 'CNY',
+          'Asia/Hong_Kong': 'HKD',
+          'Asia/Singapore': 'SGD',
+          'Asia/Seoul': 'KRW',
+          'Asia/Riyadh': 'SAR',
+          // Americas
+          'America/New_York': 'USD',
+          'America/Los_Angeles': 'USD',
+          'America/Chicago': 'USD',
+          'America/Toronto': 'CAD',
+          'America/Vancouver': 'CAD',
+          'America/Mexico_City': 'MXN',
+          'America/Sao_Paulo': 'BRL',
+          // Oceania
+          'Australia/Sydney': 'AUD',
+          'Australia/Melbourne': 'AUD',
+          'Pacific/Auckland': 'NZD',
+          // Africa
+          'Africa/Johannesburg': 'ZAR',
+        };
+
+        // Check if we have a mapping for the user's timezone
+        for (const [tz, curr] of Object.entries(timezoneToCurrency)) {
+          if (timezone.includes(tz.split('/')[1])) {
+            currency = curr;
+            break;
+          }
+        }
+
+        setDefaultCurrency(currency);
+        console.log(`🌍 Detected timezone: ${timezone}, setting currency to: ${currency}`);
+      } catch (error) {
+        console.error('Failed to detect currency:', error);
+        setDefaultCurrency('USD'); // Fallback to USD
+      }
+    };
+
+    detectCurrency();
+  }, []);
 
   // Show toast notification
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -2450,6 +2543,7 @@ function ProfileBuilderContent() {
                             title: '',
                             description: '',
                             pricing: '',
+                            currency: defaultCurrency,
                             category: '',
                             showPublicly: true
                           };
@@ -2488,6 +2582,7 @@ function ProfileBuilderContent() {
                                       title: e.target.value,
                                       description: '',
                                       pricing: '',
+                                      currency: defaultCurrency,
                                       category: '',
                                       showPublicly: true
                                     };
@@ -2513,6 +2608,7 @@ function ProfileBuilderContent() {
                                         title: '',
                                         description: '',
                                         pricing: '',
+                                        currency: defaultCurrency,
                                         category: e.target.value,
                                         showPublicly: true
                                       };
@@ -2524,30 +2620,68 @@ function ProfileBuilderContent() {
                                 />
                               </div>
 
-                              {/* Service Pricing */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Pricing *
-                                </label>
-                                <input
-                                  type="text"
-                                  value=""
-                                  onChange={(e) => {
-                                    if (profileData.services.length === 0) {
-                                      const newService = {
-                                        id: Date.now().toString(),
-                                        title: '',
-                                        description: '',
-                                        pricing: e.target.value,
-                                        category: '',
-                                        showPublicly: true
-                                      };
-                                      setProfileData({ ...profileData, services: [newService] });
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                  placeholder="e.g., $100/hour, Contact for pricing"
-                                />
+                              {/* Service Pricing & Currency */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {/* Currency Dropdown */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Currency *
+                                  </label>
+                                  <select
+                                    value={defaultCurrency}
+                                    onChange={(e) => {
+                                      if (profileData.services.length === 0) {
+                                        const newService = {
+                                          id: Date.now().toString(),
+                                          title: '',
+                                          description: '',
+                                          pricing: '',
+                                          currency: e.target.value,
+                                          category: '',
+                                          showPublicly: true
+                                        };
+                                        setProfileData({ ...profileData, services: [newService] });
+                                      }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white"
+                                  >
+                                    {CURRENCIES.map(curr => (
+                                      <option key={curr.code} value={curr.code}>
+                                        {curr.symbol} {curr.code} - {curr.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* Pricing Input */}
+                                <div className="sm:col-span-2">
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Pricing *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value=""
+                                    onChange={(e) => {
+                                      // Only allow numbers and specific characters for pricing (/, -, space)
+                                      const value = e.target.value;
+                                      const allowedPattern = /^[0-9\/\-\s]*$/;
+                                      if ((allowedPattern.test(value) || value === '') && profileData.services.length === 0) {
+                                        const newService = {
+                                          id: Date.now().toString(),
+                                          title: '',
+                                          description: '',
+                                          pricing: value,
+                                          currency: defaultCurrency,
+                                          category: '',
+                                          showPublicly: true
+                                        };
+                                        setProfileData({ ...profileData, services: [newService] });
+                                      }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                    placeholder={`e.g., 100/hour, 35/hrm, 50-100`}
+                                  />
+                                </div>
                               </div>
 
                               {/* Show Publicly Toggle */}
@@ -2564,6 +2698,7 @@ function ProfileBuilderContent() {
                                             title: '',
                                             description: '',
                                             pricing: '',
+                                            currency: defaultCurrency,
                                             category: '',
                                             showPublicly: e.target.checked
                                           };
@@ -2583,22 +2718,27 @@ function ProfileBuilderContent() {
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Description
+                                <span className="text-xs text-gray-500 ml-2">
+                                  (0/250 characters)
+                                </span>
                               </label>
                               <textarea
                                 value=""
                                 onChange={(e) => {
-                                  if (profileData.services.length === 0) {
+                                  if (profileData.services.length === 0 && e.target.value.length <= 250) {
                                     const newService = {
                                       id: Date.now().toString(),
                                       title: '',
                                       description: e.target.value,
                                       pricing: '',
+                                      currency: defaultCurrency,
                                       category: '',
                                       showPublicly: true
                                     };
                                     setProfileData({ ...profileData, services: [newService] });
                                   }
                                 }}
+                                maxLength={250}
                                 rows={3}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
                                 placeholder="Describe your service..."
@@ -2618,6 +2758,7 @@ function ProfileBuilderContent() {
                                       title: '',
                                       description: '',
                                       pricing: '',
+                                      currency: defaultCurrency,
                                       category: '',
                                       showPublicly: true
                                     };
@@ -2685,23 +2826,54 @@ function ProfileBuilderContent() {
                                 />
                               </div>
 
-                              {/* Service Pricing */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Pricing *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={service.pricing}
-                                  onChange={(e) => {
-                                    const updatedServices = profileData.services.map(s =>
-                                      s.id === service.id ? { ...s, pricing: e.target.value } : s
-                                    );
-                                    setProfileData({ ...profileData, services: updatedServices });
-                                  }}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                  placeholder="e.g., $100/hour, Contact for pricing"
-                                />
+                              {/* Service Pricing & Currency */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {/* Currency Dropdown */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Currency *
+                                  </label>
+                                  <select
+                                    value={service.currency || defaultCurrency}
+                                    onChange={(e) => {
+                                      const updatedServices = profileData.services.map(s =>
+                                        s.id === service.id ? { ...s, currency: e.target.value } : s
+                                      );
+                                      setProfileData({ ...profileData, services: updatedServices });
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white"
+                                  >
+                                    {CURRENCIES.map(curr => (
+                                      <option key={curr.code} value={curr.code}>
+                                        {curr.symbol} {curr.code} - {curr.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* Pricing Input */}
+                                <div className="sm:col-span-2">
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Pricing *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={service.pricing}
+                                    onChange={(e) => {
+                                      // Only allow numbers and specific characters for pricing (/, -, space)
+                                      const value = e.target.value;
+                                      const allowedPattern = /^[0-9\/\-\s]*$/;
+                                      if (allowedPattern.test(value) || value === '') {
+                                        const updatedServices = profileData.services.map(s =>
+                                          s.id === service.id ? { ...s, pricing: value } : s
+                                        );
+                                        setProfileData({ ...profileData, services: updatedServices });
+                                      }
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                                    placeholder={`e.g., 100/hour, 35/hrm, 50-100`}
+                                  />
+                                </div>
                               </div>
 
                               {/* Show Publicly Toggle */}
@@ -2730,15 +2902,21 @@ function ProfileBuilderContent() {
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Description
+                                <span className="text-xs text-gray-500 ml-2">
+                                  ({service.description.length}/250 characters)
+                                </span>
                               </label>
                               <textarea
                                 value={service.description}
                                 onChange={(e) => {
-                                  const updatedServices = profileData.services.map(s =>
-                                    s.id === service.id ? { ...s, description: e.target.value } : s
-                                  );
-                                  setProfileData({ ...profileData, services: updatedServices });
+                                  if (e.target.value.length <= 250) {
+                                    const updatedServices = profileData.services.map(s =>
+                                      s.id === service.id ? { ...s, description: e.target.value } : s
+                                    );
+                                    setProfileData({ ...profileData, services: updatedServices });
+                                  }
                                 }}
+                                maxLength={250}
                                 rows={3}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
                                 placeholder="Describe your service..."

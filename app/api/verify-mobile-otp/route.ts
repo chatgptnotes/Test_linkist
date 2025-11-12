@@ -140,45 +140,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Database verification (development mode or Twilio fallback)
-    const storedData = await SupabaseMobileOTPStore.get(mobile);
+    // Check for hardcoded test OTP first (bypass database check for testing)
+    const useHardcodedOTP = process.env.USE_HARDCODED_OTP === 'true';
+    const hardcodedOTP = process.env.HARDCODED_OTP;
 
-    if (!storedData) {
-      return NextResponse.json(
-        { success: false, error: 'No verification code found for this mobile number. Please request a new code.' },
-        { status: 400 }
-      );
-    }
+    if (useHardcodedOTP && hardcodedOTP && otp === hardcodedOTP) {
+      console.log('✅ Hardcoded test OTP accepted for:', mobile);
+      // Skip database check, proceed directly to user verification
+    } else {
+      // Database verification (development mode or Twilio fallback)
+      const storedData = await SupabaseMobileOTPStore.get(mobile);
 
-    // Check if OTP has expired
-    if (new Date() > new Date(storedData.expires_at)) {
-      await SupabaseMobileOTPStore.delete(mobile);
-      return NextResponse.json(
-        { success: false, error: 'Verification code has expired. Please request a new code.' },
-        { status: 400 }
-      );
-    }
+      if (!storedData) {
+        return NextResponse.json(
+          { success: false, error: 'No verification code found for this mobile number. Please request a new code.' },
+          { status: 400 }
+        );
+      }
 
-    // Check if OTP matches
-    if (storedData.otp !== otp) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid verification code. Please check and try again.' },
-        { status: 400 }
-      );
-    }
+      // Check if OTP has expired
+      if (new Date() > new Date(storedData.expires_at)) {
+        await SupabaseMobileOTPStore.delete(mobile);
+        return NextResponse.json(
+          { success: false, error: 'Verification code has expired. Please request a new code.' },
+          { status: 400 }
+        );
+      }
 
-    // Mark as verified in database
-    const updated = await SupabaseMobileOTPStore.set(mobile, {
-      ...storedData,
-      verified: true
-    });
+      // Check if OTP matches
+      if (storedData.otp !== otp) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid verification code. Please check and try again.' },
+          { status: 400 }
+        );
+      }
 
-    if (!updated) {
-      console.error('Failed to mark mobile OTP as verified');
-      return NextResponse.json(
-        { success: false, error: 'Failed to verify code' },
-        { status: 500 }
-      );
+      // Mark as verified in database
+      const updated = await SupabaseMobileOTPStore.set(mobile, {
+        ...storedData,
+        verified: true
+      });
+
+      if (!updated) {
+        console.error('Failed to mark mobile OTP as verified');
+        return NextResponse.json(
+          { success: false, error: 'Failed to verify code' },
+          { status: 500 }
+        );
+      }
     }
 
     // Update user's mobile_verified status in database
