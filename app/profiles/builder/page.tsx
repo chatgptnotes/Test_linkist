@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { getBaseDomain } from '@/lib/get-base-url';
+import { searchSkills } from '@/lib/skills-data';
 
 const GoogleMapPicker = dynamic(() => import('@/components/GoogleMapPicker'), {
   ssr: false,
@@ -330,6 +331,10 @@ function ProfileBuilderContent() {
 
   const [activeSection, setActiveSection] = useState<'basic' | 'professional' | 'service' | 'social' | 'media-photo' | 'media-gallery'>('basic');
   const [skillInput, setSkillInput] = useState('');
+  const [skillSuggestions, setSkillSuggestions] = useState<Array<{ skill: string; category: string }>>([]);
+  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const skillDropdownRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [mobileCountryCode, setMobileCountryCode] = useState('+971');
@@ -1220,6 +1225,24 @@ function ProfileBuilderContent() {
     }
   }, [profileData.mobileNumber, useSameNumberForWhatsapp]);
 
+  // Handle click outside for skills dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (skillDropdownRef.current && !skillDropdownRef.current.contains(event.target as Node)) {
+        setShowSkillDropdown(false);
+        setSelectedSuggestionIndex(-1);
+      }
+    };
+
+    if (showSkillDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSkillDropdown]);
+
   // Detect user's location and set default currency
   useEffect(() => {
     const detectCurrency = async () => {
@@ -1573,8 +1596,26 @@ function ProfileBuilderContent() {
 
   const handleSaveChanges = handleSubmit;
 
-  const addSkill = () => {
-    if (skillInput.trim() && !profileData.skills.includes(skillInput.trim())) {
+  // Handle skill input change with autocomplete
+  const handleSkillInputChange = (value: string) => {
+    setSkillInput(value);
+
+    if (value.trim().length > 0) {
+      const suggestions = searchSkills(value);
+      setSkillSuggestions(suggestions.slice(0, 10)); // Show max 10 suggestions
+      setShowSkillDropdown(suggestions.length > 0);
+      setSelectedSuggestionIndex(-1);
+    } else {
+      setShowSkillDropdown(false);
+      setSkillSuggestions([]);
+    }
+  };
+
+  // Add skill from input or suggestion
+  const addSkill = (skillToAdd?: string) => {
+    const skillName = skillToAdd || skillInput.trim();
+
+    if (skillName && !profileData.skills.includes(skillName)) {
       // Check if maximum 5 skills reached
       if (profileData.skills.length >= 5) {
         showToast('Maximum 5 skills allowed', 'error');
@@ -1582,9 +1623,49 @@ function ProfileBuilderContent() {
       }
       setProfileData({
         ...profileData,
-        skills: [...profileData.skills, skillInput.trim()]
+        skills: [...profileData.skills, skillName]
       });
       setSkillInput('');
+      setShowSkillDropdown(false);
+      setSkillSuggestions([]);
+      setSelectedSuggestionIndex(-1);
+    }
+  };
+
+  // Handle keyboard navigation in suggestions
+  const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSkillDropdown || skillSuggestions.length === 0) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addSkill();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev =>
+          prev < skillSuggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0) {
+          addSkill(skillSuggestions[selectedSuggestionIndex].skill);
+        } else {
+          addSkill();
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowSkillDropdown(false);
+        setSelectedSuggestionIndex(-1);
+        break;
     }
   };
 
@@ -2394,21 +2475,56 @@ function ProfileBuilderContent() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Search & Add Skills</label>
                       <div className="flex gap-2">
-                        <div className="relative flex-1">
+                        <div className="relative flex-1" ref={skillDropdownRef}>
                           <input
                             type="text"
                             value={skillInput}
-                            onChange={(e) => setSkillInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                addSkill();
-                              }
-                            }}
+                            onChange={(e) => handleSkillInputChange(e.target.value)}
+                            onKeyDown={handleSkillKeyDown}
                             disabled={profileData.skills.length >= 5}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500"
                             placeholder={profileData.skills.length >= 5 ? "Maximum 5 skills reached" : "Type skill name..."}
                           />
+
+                          {/* Autocomplete Dropdown */}
+                          {showSkillDropdown && skillSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {skillSuggestions.map((suggestion, index) => {
+                                const isAlreadyAdded = profileData.skills.includes(suggestion.skill);
+                                const isSelected = index === selectedSuggestionIndex;
+
+                                return (
+                                  <button
+                                    key={`${suggestion.skill}-${index}`}
+                                    type="button"
+                                    onClick={() => !isAlreadyAdded && addSkill(suggestion.skill)}
+                                    disabled={isAlreadyAdded}
+                                    className={`w-full text-left px-3 py-2 transition-colors ${
+                                      isAlreadyAdded
+                                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                                        : isSelected
+                                        ? 'bg-red-50 text-red-700'
+                                        : 'hover:bg-red-50 hover:text-red-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-medium text-sm">
+                                          {suggestion.skill}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                          {suggestion.category}
+                                        </div>
+                                      </div>
+                                      {isAlreadyAdded && (
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={addSkill}
