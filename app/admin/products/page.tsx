@@ -350,6 +350,17 @@ export default function ProductsPage() {
     ? (products.reduce((sum, p) => sum + p.price, 0) / products.length || 0)
     : (plans.reduce((sum, p) => sum + p.price, 0) / plans.length || 0);
 
+  // Helper function to generate slug from name
+  const generateSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+  };
+
   // Product CRUD handlers
   const handleProductEdit = (product: Product) => {
     setSelectedProduct(product);
@@ -406,17 +417,20 @@ export default function ProductsPage() {
       const endpoint = '/api/admin/products';
       const method = selectedProduct ? 'PUT' : 'POST';
 
+      // Ensure numeric fields are properly typed
       const payload = {
         ...(selectedProduct && { id: selectedProduct.id }),
-        sku: productFormData.sku,
-        name: productFormData.name,
-        slug: productFormData.slug,
-        description: productFormData.description,
-        price: productFormData.price,
-        stock_quantity: productFormData.stock_quantity,
-        is_active: productFormData.is_active,
+        sku: productFormData.sku.trim(),
+        name: productFormData.name.trim(),
+        slug: productFormData.slug.trim(),
+        description: productFormData.description.trim(),
+        price: Number(productFormData.price),
+        stock_quantity: Number(productFormData.stock_quantity),
+        is_active: Boolean(productFormData.is_active),
         category_id: productFormData.category_id
       };
+
+      console.log('Submitting product payload:', payload);
 
       const response = await fetch(endpoint, {
         method,
@@ -426,6 +440,9 @@ export default function ProductsPage() {
         body: JSON.stringify(payload)
       });
 
+      const responseData = await response.json();
+      console.log('Response:', responseData);
+
       if (response.ok) {
         alert(selectedProduct ? 'Product updated successfully' : 'Product created successfully');
         setShowProductModal(false);
@@ -433,12 +450,12 @@ export default function ProductsPage() {
         resetProductForm();
         fetchData();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to save product');
+        console.error('API Error:', responseData);
+        alert(responseData.error || `Failed to save product (Status: ${response.status})`);
       }
     } catch (error) {
       console.error('Error saving product:', error);
-      alert('Failed to save product');
+      alert('Failed to save product: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -1077,7 +1094,23 @@ export default function ProductsPage() {
                     <input
                       type="text"
                       value={productFormData.name}
-                      onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        // Auto-generate slug for NEW products only (not when editing)
+                        if (!selectedProduct) {
+                          const autoSlug = generateSlug(newName);
+                          setProductFormData({
+                            ...productFormData,
+                            name: newName,
+                            slug: autoSlug
+                          });
+                        } else {
+                          setProductFormData({
+                            ...productFormData,
+                            name: newName
+                          });
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       placeholder="e.g., Premium NFC Card"
                       required
@@ -1089,15 +1122,33 @@ export default function ProductsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Slug *
                     </label>
-                    <input
-                      type="text"
-                      value={productFormData.slug}
-                      onChange={(e) => setProductFormData({ ...productFormData, slug: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      placeholder="e.g., premium-nfc-card"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">URL-friendly version (lowercase, use hyphens)</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={productFormData.slug}
+                        onChange={(e) => setProductFormData({ ...productFormData, slug: e.target.value })}
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                        placeholder="e.g., premium-nfc-card"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const autoSlug = generateSlug(productFormData.name);
+                          setProductFormData({ ...productFormData, slug: autoSlug });
+                        }}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium"
+                        title="Generate slug from product name"
+                      >
+                        Auto-Generate
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedProduct
+                        ? 'Click "Auto-Generate" to create slug from product name, or edit manually'
+                        : 'Auto-generated from product name, but you can edit it manually'
+                      }
+                    </p>
                   </div>
 
                   {/* Description */}

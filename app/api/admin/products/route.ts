@@ -101,6 +101,7 @@ export async function PUT(request: NextRequest) {
     // Verify admin access
     const session = await getCurrentUser(request);
     if (!session.isAdmin) {
+      console.error('Unauthorized access attempt');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -108,9 +109,12 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('Update product request body:', body);
+
     const { id, ...updateData } = body;
 
     if (!id) {
+      console.error('Product ID is missing');
       return NextResponse.json(
         { error: 'Product ID is required' },
         { status: 400 }
@@ -120,6 +124,7 @@ export async function PUT(request: NextRequest) {
     // Check if product exists
     const existingProduct = await SupabaseProductsStore.getById(id);
     if (!existingProduct) {
+      console.error('Product not found:', id);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
@@ -128,16 +133,27 @@ export async function PUT(request: NextRequest) {
 
     // Validate price if provided
     if (updateData.price !== undefined && (typeof updateData.price !== 'number' || updateData.price < 0)) {
+      console.error('Invalid price:', updateData.price, 'Type:', typeof updateData.price);
       return NextResponse.json(
-        { error: 'Invalid price' },
+        { error: `Invalid price: ${updateData.price}. Must be a positive number.` },
         { status: 400 }
       );
     }
 
-    // If SKU is being updated, check for conflicts
+    // Validate stock_quantity if provided
+    if (updateData.stock_quantity !== undefined && (typeof updateData.stock_quantity !== 'number' || updateData.stock_quantity < 0)) {
+      console.error('Invalid stock quantity:', updateData.stock_quantity);
+      return NextResponse.json(
+        { error: `Invalid stock quantity: ${updateData.stock_quantity}. Must be a non-negative number.` },
+        { status: 400 }
+      );
+    }
+
+    // If SKU is being updated, check for conflicts (but SKU shouldn't be updated)
     if (updateData.sku && updateData.sku !== existingProduct.sku) {
       const existingSku = await SupabaseProductsStore.getBySku(updateData.sku);
       if (existingSku && existingSku.id !== id) {
+        console.error('SKU conflict:', updateData.sku);
         return NextResponse.json(
           { error: 'Product with this SKU already exists' },
           { status: 400 }
@@ -145,7 +161,9 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    console.log('Updating product with data:', updateData);
     const updatedProduct = await SupabaseProductsStore.update(id, updateData);
+    console.log('Product updated successfully:', updatedProduct.id);
 
     return NextResponse.json({
       product: updatedProduct,
@@ -154,8 +172,9 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error updating product:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to update product' },
+      { error: `Failed to update product: ${errorMessage}` },
       { status: 500 }
     );
   }
