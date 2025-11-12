@@ -26,6 +26,7 @@ export default function GDPRConsentBanner() {
     marketing: false,
   });
   const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<'accept' | 'reject' | 'selected' | null>(null);
 
   useEffect(() => {
     // Check if consent has already been given
@@ -41,12 +42,12 @@ export default function GDPRConsentBanner() {
       analytics: true,
       marketing: true,
     };
-    
-    await saveConsent(fullConsent);
+
+    await saveConsent(fullConsent, 'accept');
   };
 
   const handleAcceptSelected = async () => {
-    await saveConsent(preferences);
+    await saveConsent(preferences, 'selected');
   };
 
   const handleRejectAll = async () => {
@@ -55,12 +56,13 @@ export default function GDPRConsentBanner() {
       analytics: false,
       marketing: false,
     };
-    
-    await saveConsent(minimalConsent);
+
+    await saveConsent(minimalConsent, 'reject');
   };
 
-  const saveConsent = async (consentPreferences: ConsentPreferences) => {
+  const saveConsent = async (consentPreferences: ConsentPreferences, action: 'accept' | 'reject' | 'selected') => {
     setLoading(true);
+    setLoadingAction(action);
     
     try {
       const response = await fetch('/api/gdpr/consent', {
@@ -97,6 +99,7 @@ export default function GDPRConsentBanner() {
       console.error('Failed to save consent:', error);
     } finally {
       setLoading(false);
+      setLoadingAction(null);
     }
   };
 
@@ -137,10 +140,10 @@ export default function GDPRConsentBanner() {
               <div className="flex gap-3 order-1 sm:order-2">
                 <button
                   onClick={handleRejectAll}
-                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-colors"
+                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-colors disabled:opacity-50"
                   disabled={loading}
                 >
-                  Reject All
+                  {loadingAction === 'reject' ? 'Saving...' : 'Reject All'}
                 </button>
                 <button
                   onClick={handleAcceptAll}
@@ -148,7 +151,7 @@ export default function GDPRConsentBanner() {
                   disabled={loading}
                   style={{ color: '#ffffff', backgroundColor: '#dc2626' }}
                 >
-                  {loading ? 'Saving...' : 'Accept All'}
+                  {loadingAction === 'accept' ? 'Saving...' : 'Accept All'}
                 </button>
               </div>
             </div>
@@ -235,14 +238,14 @@ export default function GDPRConsentBanner() {
                   disabled={loading}
                   style={{ color: '#ffffff', backgroundColor: '#16a34a' }}
                 >
-                  {loading ? 'Saving...' : 'Accept All'}
+                  {loadingAction === 'accept' ? 'Saving...' : 'Accept All'}
                 </button>
                 <button
                   onClick={handleAcceptSelected}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
                   disabled={loading}
                 >
-                  {loading ? 'Saving...' : 'Save Preferences'}
+                  {loadingAction === 'selected' ? 'Saving...' : 'Save Preferences'}
                 </button>
               </div>
             </div>
