@@ -3563,18 +3563,15 @@ function ProfileBuilderContent() {
                             {/* Show Publicly Toggle */}
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-gray-700">Show publicly</span>
-                              <button
-                                onClick={() => handleCertificationVisibilityToggle(cert.id)}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                  cert.showPublicly ? 'bg-red-600' : 'bg-gray-300'
-                                }`}
-                              >
-                                <span
-                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    cert.showPublicly ? 'translate-x-6' : 'translate-x-1'
-                                  }`}
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={cert.showPublicly}
+                                  onChange={() => handleCertificationVisibilityToggle(cert.id)}
+                                  className="sr-only peer"
                                 />
-                              </button>
+                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                              </label>
                             </div>
                           </div>
                         ))}
