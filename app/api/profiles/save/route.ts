@@ -183,6 +183,9 @@ export async function POST(request: NextRequest) {
         // Media Gallery
         photos: data.photos || [],
         videos: data.videos || [],
+
+        // Certifications
+        certifications: data.certifications || [],
       }
     }
 
