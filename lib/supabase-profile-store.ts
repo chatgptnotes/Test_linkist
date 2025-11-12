@@ -115,6 +115,9 @@ export interface ProfileInput {
     // Media Gallery
     photos?: Array<{ id: string; url: string; title: string; showPublicly: boolean }>
     videos?: Array<{ id: string; url: string; title: string; showPublicly: boolean }>
+
+    // Certifications
+    certifications?: Array<{ id: string; name: string; title: string; url: string; size: number; type: string; showPublicly: boolean }>
   }
 }
 

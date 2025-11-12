@@ -111,6 +111,16 @@ interface ProfileData {
     category: string;
     showPublicly?: boolean;
   }>;
+  // Certifications
+  certifications?: Array<{
+    id: string;
+    name: string;
+    title: string;
+    url: string;
+    size: number;
+    type: string;
+    showPublicly: boolean;
+  }>;
 }
 
 export default function ProfilePreviewPage() {
@@ -210,6 +220,8 @@ export default function ProfilePreviewPage() {
             showBackgroundImage: dbProfile.preferences?.showBackgroundImage ?? true,
             // Services
             services: dbProfile.services || [],
+            // Certifications
+            certifications: dbProfile.preferences?.certifications || [],
           };
 
           console.log('✅ Mapped profile data for preview');
@@ -606,6 +618,51 @@ export default function ProfilePreviewPage() {
                       )}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Certifications Section */}
+            {profileData.certifications && profileData.certifications.filter(cert => cert.showPublicly).length > 0 && (
+              <div className="mb-6 sm:mb-8">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Certifications</h3>
+                <div className="space-y-2">
+                  {profileData.certifications
+                    .filter(cert => cert.showPublicly)
+                    .map((cert) => (
+                      <a
+                        key={cert.id}
+                        href={cert.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* File type icon */}
+                          <div className="flex-shrink-0">
+                            {cert.type === 'application/pdf' ? (
+                              <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                <path d="M14 2v6h6"/>
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                <path d="M14 2v6h6"/>
+                              </svg>
+                            )}
+                          </div>
+                          {/* Certification title */}
+                          <span className="text-sm sm:text-base text-gray-900 font-medium flex-1">
+                            {cert.title}
+                          </span>
+                          {/* Download/view icon */}
+                          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </div>
+                      </a>
+                    ))}
                 </div>
               </div>
             )}

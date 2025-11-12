@@ -102,6 +102,8 @@ interface ProfileData {
   showBackgroundImage: boolean;
   // Services
   services?: Array<{ id: string; title: string; description: string; pricing: string; currency?: string; category: string; showPublicly?: boolean }>;
+  // Certifications
+  certifications?: Array<{ id: string; name: string; title: string; url: string; size: number; type: string; showPublicly: boolean }>;
 }
 
 export default function ProfilePreviewPage() {
@@ -195,6 +197,8 @@ export default function ProfilePreviewPage() {
             showBackgroundImage: prefs.showBackgroundImage ?? true,
             // Services
             services: dbProfile.services || [],
+            // Certifications
+            certifications: prefs.certifications || [],
           };
 
           console.log('✅ Mapped profile data for preview');
@@ -551,6 +555,51 @@ export default function ProfilePreviewPage() {
               </div>
             </div>
 
+            {/* Certifications Section */}
+            {profileData.certifications && profileData.certifications.filter(cert => cert.showPublicly).length > 0 && (
+              <div className="mb-6 sm:mb-8">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Certifications</h3>
+                <div className="space-y-2">
+                  {profileData.certifications
+                    .filter(cert => cert.showPublicly)
+                    .map((cert) => (
+                      <a
+                        key={cert.id}
+                        href={cert.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* File type icon */}
+                          <div className="flex-shrink-0">
+                            {cert.type === 'application/pdf' ? (
+                              <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                <path d="M14 2v6h6"/>
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                <path d="M14 2v6h6"/>
+                              </svg>
+                            )}
+                          </div>
+                          {/* Certification title */}
+                          <span className="text-sm sm:text-base text-gray-900 font-medium flex-1">
+                            {cert.title}
+                          </span>
+                          {/* Download/view icon */}
+                          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </div>
+                      </a>
+                    ))}
+                </div>
+              </div>
+            )}
+
             {/* Save to Contacts Button - Mobile & Tablet Only */}
             <button
               onClick={handleSaveToContacts}
@@ -560,44 +609,6 @@ export default function ProfilePreviewPage() {
               <PersonAdd className="w-5 h-5" />
               Save to Contacts
             </button>
-
-            {/* Services Section */}
-            {profileData.services && profileData.services.filter(s => s.showPublicly !== false).length > 0 && (
-              <div className="mb-6 sm:mb-8">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Services</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {profileData.services
-                    .filter(service => service.showPublicly !== false)
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="text-base font-semibold text-gray-900">{service.title}</h4>
-                          {service.category && (
-                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                              {service.category}
-                            </span>
-                          )}
-                        </div>
-                        {service.description && (
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-3">{service.description}</p>
-                        )}
-                        {service.pricing && (
-                          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                            <span className="text-xs text-gray-500">Pricing</span>
-                            <span className="text-sm font-semibold text-red-600">
-                              {CURRENCIES.find(c => c.code === (service.currency || 'USD'))?.symbol || '$'}
-                              {service.pricing}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
 
             {/* Social Media Links */}
             {(profileData.showLinkedin || profileData.showInstagram || profileData.showFacebook ||
@@ -671,6 +682,44 @@ export default function ProfilePreviewPage() {
                       YouTube
                     </a>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Services Section */}
+            {profileData.services && profileData.services.filter(s => s.showPublicly !== false).length > 0 && (
+              <div className="mb-6 sm:mb-8">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Services</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {profileData.services
+                    .filter(service => service.showPublicly !== false)
+                    .map((service) => (
+                      <div
+                        key={service.id}
+                        className="rounded-lg p-4"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="text-base font-semibold text-gray-900">{service.title}</h4>
+                          {service.category && (
+                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                              {service.category}
+                            </span>
+                          )}
+                        </div>
+                        {service.description && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-3">{service.description}</p>
+                        )}
+                        {service.pricing && (
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                            <span className="text-xs text-gray-500">Pricing</span>
+                            <span className="text-sm font-semibold text-red-600">
+                              {CURRENCIES.find(c => c.code === (service.currency || 'USD'))?.symbol || '$'}
+                              {service.pricing}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

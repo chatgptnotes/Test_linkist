@@ -120,7 +120,7 @@ interface ProfileData {
   videos: Array<{ id: string; url: string; title: string; showPublicly: boolean }>;
 
   // Certifications & Documents
-  certifications: Array<{ id: string; name: string; url: string; size: number; type: string }>;
+  certifications: Array<{ id: string; name: string; title: string; url: string; size: number; type: string; showPublicly: boolean }>;
 
   // Services
   services: Array<{ id: string; title: string; description: string; pricing: string; currency: string; category: string; showPublicly: boolean }>;
@@ -802,9 +802,11 @@ function ProfileBuilderContent() {
       const newCertification = {
         id: `cert-${Date.now()}`,
         name: file.name,
+        title: '', // User must enter title
         url: fileUrl,
         size: file.size,
-        type: file.type
+        type: file.type,
+        showPublicly: true // Default to visible
       };
 
       // Add to certifications array
@@ -819,6 +821,26 @@ function ProfileBuilderContent() {
       console.error('Error uploading certification:', error);
       toast.error('Failed to upload certification', { id: 'cert-upload' });
     }
+  };
+
+  // Update certification title
+  const handleCertificationTitleChange = (certId: string, title: string) => {
+    setProfileData({
+      ...profileData,
+      certifications: profileData.certifications.map(cert =>
+        cert.id === certId ? { ...cert, title } : cert
+      )
+    });
+  };
+
+  // Toggle certification visibility
+  const handleCertificationVisibilityToggle = (certId: string) => {
+    setProfileData({
+      ...profileData,
+      certifications: profileData.certifications.map(cert =>
+        cert.id === certId ? { ...cert, showPublicly: !cert.showPublicly } : cert
+      )
+    });
   };
 
   // Fetch existing profile data on component mount
@@ -1429,8 +1451,24 @@ function ProfileBuilderContent() {
   };
 
   // Handle Continue button click for navigation
+  // Validate certifications have titles
+  const validateCertifications = () => {
+    if (profileData.certifications && profileData.certifications.length > 0) {
+      const missingTitles = profileData.certifications.filter(cert => !cert.title || cert.title.trim() === '');
+      if (missingTitles.length > 0) {
+        toast.error('Please add titles to all certifications before continuing');
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleContinue = (nextSection: 'professional' | 'service' | 'social' | 'media-photo') => {
     if (activeSection === 'basic' && !validateBasicInfo()) {
+      return;
+    }
+    // Validate certifications when leaving the social section
+    if (activeSection === 'social' && !validateCertifications()) {
       return;
     }
     setActiveSection(nextSection);
@@ -3452,15 +3490,15 @@ function ProfileBuilderContent() {
 
                     {/* Uploaded Certifications List */}
                     {profileData.certifications && profileData.certifications.length > 0 && (
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-4 space-y-3">
                         {profileData.certifications.map((cert) => (
                           <div
                             key={cert.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                            className="p-4 bg-gray-50 rounded-lg border border-gray-200"
                           >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex items-start gap-3 mb-3">
                               {/* File Icon */}
-                              <div className="flex-shrink-0">
+                              <div className="flex-shrink-0 mt-1">
                                 {cert.type === 'application/pdf' ? (
                                   <svg className="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
@@ -3480,28 +3518,61 @@ function ProfileBuilderContent() {
 
                               {/* File Info */}
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
+                                <p className="text-sm font-medium text-gray-900 truncate mb-1">
                                   {cert.name}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {(cert.size / 1024 / 1024).toFixed(2)} MB
                                 </p>
                               </div>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => {
+                                  setProfileData({
+                                    ...profileData,
+                                    certifications: profileData.certifications.filter(c => c.id !== cert.id)
+                                  });
+                                  toast.success('Certification removed');
+                                }}
+                                className="flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
+                              >
+                                <Trash className="h-5 w-5" />
+                              </button>
                             </div>
 
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => {
-                                setProfileData({
-                                  ...profileData,
-                                  certifications: profileData.certifications.filter(c => c.id !== cert.id)
-                                });
-                                toast.success('Certification removed');
-                              }}
-                              className="flex-shrink-0 ml-2 text-red-600 hover:text-red-800 transition-colors"
-                            >
-                              <Trash className="h-5 w-5" />
-                            </button>
+                            {/* Title Input - REQUIRED */}
+                            <div className="mb-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Title <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={cert.title}
+                                onChange={(e) => handleCertificationTitleChange(cert.id, e.target.value)}
+                                placeholder="e.g., AWS Certified Solutions Architect"
+                                className={`w-full px-3 py-2 border ${
+                                  !cert.title ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                } rounded-md focus:outline-none focus:ring-2 text-sm`}
+                              />
+                              {!cert.title && (
+                                <p className="text-xs text-red-600 mt-1">Title is required</p>
+                              )}
+                            </div>
+
+                            {/* Show Publicly Toggle */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-700">Show publicly</span>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={cert.showPublicly}
+                                  onChange={() => handleCertificationVisibilityToggle(cert.id)}
+                                  className="sr-only peer"
+                                />
+                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                              </label>
+                            </div>
                           </div>
                         ))}
                       </div>
