@@ -3127,9 +3127,12 @@ function ProfileBuilderContent() {
                       {/* LinkedIn */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn Profile</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <LinkedIn className="absolute left-3 top-2.5 w-5 h-5 text-blue-700 pointer-events-none" />
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://linkedin.com/in/</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <LinkedIn className="absolute left-3 top-2.5 w-5 h-5 text-blue-700 pointer-events-none flex-shrink-0" />
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://linkedin.com/in/</span>
+                            <span className="inline sm:hidden">linkedin.com/in/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.linkedinUrl.replace('https://linkedin.com/in/', '')}
@@ -3142,8 +3145,8 @@ function ProfileBuilderContent() {
                                 showLinkedin: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
-                            placeholder="sarah-johnson"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
+                            placeholder="yourhandle"
                           />
                         </div>
                         <div className="flex items-center gap-2 mt-2">
@@ -3163,9 +3166,12 @@ function ProfileBuilderContent() {
                       {/* Instagram */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <Instagram className="absolute left-3 top-2.5 w-5 h-5 text-pink-600 pointer-events-none" />
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://instagram.com/</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <Instagram className="absolute left-3 top-2.5 w-5 h-5 text-pink-600 pointer-events-none flex-shrink-0" />
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://instagram.com/</span>
+                            <span className="inline sm:hidden">instagram.com/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.instagramUrl.replace('https://instagram.com/', '')}
@@ -3178,7 +3184,7 @@ function ProfileBuilderContent() {
                                 showInstagram: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
                             placeholder="yourhandle"
                           />
                         </div>
@@ -3199,9 +3205,12 @@ function ProfileBuilderContent() {
                       {/* Facebook */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <Facebook className="absolute left-3 top-2.5 w-5 h-5 text-blue-600 pointer-events-none" />
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://facebook.com/</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <Facebook className="absolute left-3 top-2.5 w-5 h-5 text-blue-600 pointer-events-none flex-shrink-0" />
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://facebook.com/</span>
+                            <span className="inline sm:hidden">facebook.com/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.facebookUrl.replace('https://facebook.com/', '')}
@@ -3214,7 +3223,7 @@ function ProfileBuilderContent() {
                                 showFacebook: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
                             placeholder="yourprofile"
                           />
                         </div>
@@ -3235,9 +3244,12 @@ function ProfileBuilderContent() {
                       {/* Twitter/X */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">X (Twitter)</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <Twitter className="absolute left-3 top-2.5 w-5 h-5 text-gray-900 pointer-events-none" />
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://x.com/</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <Twitter className="absolute left-3 top-2.5 w-5 h-5 text-gray-900 pointer-events-none flex-shrink-0" />
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://x.com/</span>
+                            <span className="inline sm:hidden">x.com/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.twitterUrl.replace('https://x.com/', '')}
@@ -3250,8 +3262,8 @@ function ProfileBuilderContent() {
                                 showTwitter: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
-                            placeholder="sarah_product"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
+                            placeholder="yourhandle"
                           />
                         </div>
                         <div className="flex items-center gap-2 mt-2">
@@ -3280,9 +3292,12 @@ function ProfileBuilderContent() {
                       {/* Behance */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Behance Portfolio</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <div className="absolute left-3 top-2.5 text-blue-500 font-bold text-sm pointer-events-none">Bē</div>
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://behance.net/</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <div className="absolute left-3 top-2.5 text-blue-500 font-bold text-sm pointer-events-none flex-shrink-0">Bē</div>
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://behance.net/</span>
+                            <span className="inline sm:hidden">behance.net/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.behanceUrl.replace('https://behance.net/', '')}
@@ -3295,7 +3310,7 @@ function ProfileBuilderContent() {
                                 showBehance: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
                             placeholder="yourportfolio"
                           />
                         </div>
@@ -3316,11 +3331,14 @@ function ProfileBuilderContent() {
                       {/* Dribbble */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Dribbble</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <svg className="absolute left-3 top-2.5 w-5 h-5 text-pink-500 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <svg className="absolute left-3 top-2.5 w-5 h-5 text-pink-500 pointer-events-none flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 24C5.385 24 0 18.615 0 12S5.385 0 12 0s12 5.385 12 12-5.385 12-12 12zm10.12-10.358c-.35-.11-3.17-.953-6.384-.438 1.34 3.684 1.887 6.684 1.992 7.308 2.3-1.555 3.936-4.02 4.395-6.87zm-6.115 7.808c-.153-.9-.75-4.032-2.19-7.77l-.066.02c-5.79 2.015-7.86 6.025-8.04 6.4 1.73 1.358 3.92 2.166 6.29 2.166 1.42 0 2.77-.29 4-.816zm-11.62-2.58c.232-.4 3.045-5.055 8.332-6.765.135-.045.27-.084.405-.12-.26-.585-.54-1.167-.832-1.74C7.17 11.775 2.206 11.71 1.756 11.7l-.004.312c0 2.633.998 5.037 2.634 6.855zm-2.42-8.955c.46.008 4.683.026 9.477-1.248-1.698-3.018-3.53-5.558-3.8-5.928-2.868 1.35-5.01 3.99-5.676 7.17zM9.6 2.052c.282.38 2.145 2.914 3.822 6 3.645-1.365 5.19-3.44 5.373-3.702-1.81-1.61-4.19-2.586-6.795-2.586-.825 0-1.63.1-2.4.285zm10.335 3.483c-.218.29-1.935 2.493-5.724 4.04.24.49.47.985.68 1.486.08.18.15.36.22.53 3.41-.43 6.8.26 7.14.33-.02-2.42-.88-4.64-2.31-6.38z"/>
                           </svg>
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://dribbble.com/</span>
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://dribbble.com/</span>
+                            <span className="inline sm:hidden">dribbble.com/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.dribbbleUrl.replace('https://dribbble.com/', '')}
@@ -3333,7 +3351,7 @@ function ProfileBuilderContent() {
                                 showDribbble: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
                             placeholder="yourprofile"
                           />
                         </div>
@@ -3354,9 +3372,12 @@ function ProfileBuilderContent() {
                       {/* GitHub */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">GitHub</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <GitHub className="absolute left-3 top-2.5 w-5 h-5 text-gray-900 pointer-events-none" />
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://github.com/</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <GitHub className="absolute left-3 top-2.5 w-5 h-5 text-gray-900 pointer-events-none flex-shrink-0" />
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://github.com/</span>
+                            <span className="inline sm:hidden">github.com/</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.githubUrl.replace('https://github.com/', '')}
@@ -3369,8 +3390,8 @@ function ProfileBuilderContent() {
                                 showGithub: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
-                            placeholder="sarahjohnson"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
+                            placeholder="yourhandle"
                           />
                         </div>
                         <div className="flex items-center gap-2 mt-2">
@@ -3390,9 +3411,12 @@ function ProfileBuilderContent() {
                       {/* YouTube */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">YouTube Channel</label>
-                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500">
-                          <YouTube className="absolute left-3 top-2.5 w-5 h-5 text-red-600 pointer-events-none" />
-                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap">https://youtube.com/@</span>
+                        <div className="relative flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden">
+                          <YouTube className="absolute left-3 top-2.5 w-5 h-5 text-red-600 pointer-events-none flex-shrink-0" />
+                          <span className="pl-10 pr-1 py-2 text-gray-500 select-none whitespace-nowrap text-xs sm:text-sm flex-shrink-0">
+                            <span className="hidden sm:inline">https://youtube.com/@</span>
+                            <span className="inline sm:hidden">youtube.com/@</span>
+                          </span>
                           <input
                             type="text"
                             value={profileData.youtubeUrl.replace('https://youtube.com/@', '')}
@@ -3405,7 +3429,7 @@ function ProfileBuilderContent() {
                                 showYoutube: handle.trim().length > 0
                               });
                             }}
-                            className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
+                            className="flex-1 min-w-0 px-2 py-2 border-0 outline-none rounded-r-lg text-sm"
                             placeholder="yourchannel"
                           />
                         </div>
