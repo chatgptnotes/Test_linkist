@@ -2833,7 +2833,7 @@ function ProfileBuilderContent() {
                                       }
                                     }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                    placeholder={`e.g., 100/hour, 35/hrm, 50-100`}
+                                    placeholder={`e.g., 100(per hour)`}
                                   />
                                 </div>
                               </div>

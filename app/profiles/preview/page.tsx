@@ -14,7 +14,7 @@ import {
   LinkedIn,
   Instagram,
   Facebook,
-  Twitter,
+  X as XIcon,
   GitHub,
   YouTube,
   Language,
@@ -714,7 +714,7 @@ export default function ProfilePreviewPage() {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:border-gray-900 hover:bg-gray-50 hover:text-gray-900 transition-colors text-sm"
                     >
-                      <Twitter className="w-5 h-5" />
+                      <XIcon className="w-5 h-5" />
                       X
                     </a>
                   )}
