@@ -149,13 +149,32 @@ export default function ProfilePreviewPage() {
 
         if (!profileResponse.ok) {
           console.log('⚠️ Profile fetch failed, trying localStorage fallback...');
+
+          // Try to get current user email for filtering
+          let currentUserEmail = null;
+          try {
+            const authResponse = await fetch('/api/auth/me');
+            if (authResponse.ok) {
+              const authData = await authResponse.json();
+              currentUserEmail = authData.user?.email;
+            }
+          } catch (e) {
+            console.log('Could not fetch user email for filtering');
+          }
+
           // Not authenticated or no profile, try localStorage as fallback
           const profilesStr = localStorage.getItem('userProfiles');
           if (profilesStr) {
             const profiles = JSON.parse(profilesStr);
-            if (profiles && profiles.length > 0) {
-              console.log('✅ Found profile in localStorage');
-              setProfileData(profiles[profiles.length - 1]);
+
+            // Filter to current user's profiles only
+            const userProfiles = currentUserEmail
+              ? profiles.filter((p: any) => p.email === currentUserEmail || p.userEmail === currentUserEmail)
+              : profiles;
+
+            if (userProfiles && userProfiles.length > 0) {
+              console.log(`✅ Found ${userProfiles.length} profile(s) in localStorage`);
+              setProfileData(userProfiles[userProfiles.length - 1]);
             }
           }
           setLoading(false);
@@ -169,6 +188,8 @@ export default function ProfilePreviewPage() {
           // Get the most recent profile
           const dbProfile = data.profiles[0];
           console.log('✅ Found profile in database:', dbProfile.id);
+          console.log('🔍 DEBUG - dbProfile.whatsapp:', dbProfile.whatsapp);
+          console.log('🔍 DEBUG - dbProfile.display_settings:', JSON.stringify(dbProfile.display_settings, null, 2));
 
           // Map database profile to preview format
           const mappedProfile: ProfileData = {
@@ -226,6 +247,8 @@ export default function ProfilePreviewPage() {
 
           console.log('✅ Mapped profile data for preview');
           console.log('📋 Services loaded:', dbProfile.services?.length || 0);
+          console.log('🔍 DEBUG - mappedProfile.whatsappNumber:', mappedProfile.whatsappNumber);
+          console.log('🔍 DEBUG - mappedProfile.showWhatsappPublicly:', mappedProfile.showWhatsappPublicly);
           setProfileData(mappedProfile);
 
           // Set customUrl from database if not already set from localStorage
@@ -248,32 +271,20 @@ export default function ProfilePreviewPage() {
             console.log('✅ Set customUrl from database:', username);
           }
         } else {
-          console.log('⚠️ No profiles found in database, trying localStorage...');
-          // No profiles in database, try localStorage
-          const profilesStr = localStorage.getItem('userProfiles');
-          if (profilesStr) {
-            const profiles = JSON.parse(profilesStr);
-            if (profiles && profiles.length > 0) {
-              console.log('✅ Found profile in localStorage');
-              setProfileData(profiles[profiles.length - 1]);
-            }
-          }
+          console.log('⚠️ No profiles found in database, redirecting to profile builder...');
+          // No profiles found - don't use localStorage as it might have stale data
+          // Redirect to create a new profile
+          setTimeout(() => {
+            router.push('/profiles/templates');
+          }, 2000);
         }
       } catch (error) {
         console.error('❌ Error fetching profile:', error);
-        // Fallback to localStorage
-        try {
-          const profilesStr = localStorage.getItem('userProfiles');
-          if (profilesStr) {
-            const profiles = JSON.parse(profilesStr);
-            if (profiles && profiles.length > 0) {
-              console.log('✅ Found profile in localStorage (fallback)');
-              setProfileData(profiles[profiles.length - 1]);
-            }
-          }
-        } catch (storageError) {
-          console.warn('Could not read localStorage:', storageError);
-        }
+        // On error, don't use localStorage fallback to prevent showing wrong user's data
+        // Instead, redirect to login
+        setTimeout(() => {
+          router.push('/login?redirect=/profiles/preview');
+        }, 2000);
       } finally {
         setLoading(false);
       }
