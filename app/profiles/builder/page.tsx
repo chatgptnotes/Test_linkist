@@ -1563,12 +1563,20 @@ function ProfileBuilderContent() {
 
         showToast('Profile saved successfully!', 'success');
 
-        // Save to localStorage for dashboard display
+        // Save to localStorage for dashboard display (with user isolation)
         const savedProfiles = localStorage.getItem('userProfiles');
         const profiles = savedProfiles ? JSON.parse(savedProfiles) : [];
 
-        // Use existing profileId if editing, otherwise create new
-        const profileIdToUse = profileId || result.profile.id || Date.now().toString();
+        // Use the database-generated profile ID (from API response)
+        const profileIdToUse = result.profile?.id || result.profileId || profileId || Date.now().toString();
+
+        // Get current user email for user isolation
+        const currentUserEmail = profileData.primaryEmail;
+
+        // IMPORTANT: Filter out profiles from other users first
+        const currentUserProfiles = profiles.filter((p: any) =>
+          p.email === currentUserEmail || p.userEmail === currentUserEmail
+        );
 
         const newProfile = {
           id: profileIdToUse,
@@ -1576,6 +1584,7 @@ function ProfileBuilderContent() {
           title: profileData.jobTitle,
           company: profileData.companyName,
           email: profileData.primaryEmail,
+          userEmail: profileData.primaryEmail, // For user isolation
           phone: fullMobileNumber,
           website: profileData.companyWebsite,
           location: profileData.companyAddress,
@@ -1595,21 +1604,26 @@ function ProfileBuilderContent() {
           publicUrl: `${getBaseDomain()}/${profileData.firstName.toLowerCase()}${profileData.lastName.toLowerCase()}`
         };
 
-        // Check if profile already exists (for editing)
-        const existingIndex = profiles.findIndex((p: any) => p.id === profileIdToUse);
+        // Check if profile already exists for THIS USER (prevent duplicates)
+        const existingIndex = currentUserProfiles.findIndex((p: any) => p.id === profileIdToUse);
+
         if (existingIndex >= 0) {
-          // Keep existing stats when updating
-          newProfile.views = profiles[existingIndex].views || 0;
-          newProfile.clicks = profiles[existingIndex].clicks || 0;
-          newProfile.shares = profiles[existingIndex].shares || 0;
-          profiles[existingIndex] = newProfile;
+          // Update existing profile
+          newProfile.views = currentUserProfiles[existingIndex].views || 0;
+          newProfile.clicks = currentUserProfiles[existingIndex].clicks || 0;
+          newProfile.shares = currentUserProfiles[existingIndex].shares || 0;
+          currentUserProfiles[existingIndex] = newProfile;
+          console.log('📝 Updated existing profile in localStorage');
         } else {
-          profiles.push(newProfile);
+          // Add new profile
+          currentUserProfiles.push(newProfile);
+          console.log('✨ Added new profile to localStorage');
         }
 
-        // Try to save to localStorage, but don't fail if quota exceeded
+        // Save ONLY current user's profiles back to localStorage
         try {
-          localStorage.setItem('userProfiles', JSON.stringify(profiles));
+          localStorage.setItem('userProfiles', JSON.stringify(currentUserProfiles));
+          console.log(`💾 Saved ${currentUserProfiles.length} profile(s) for user ${currentUserEmail}`);
         } catch (storageError) {
           // Silently handle localStorage quota errors
           // Profile is already saved to database, so this is not critical

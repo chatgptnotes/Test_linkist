@@ -60,68 +60,123 @@ export default function ProfileDashboard() {
   const [foundingMemberPlan, setFoundingMemberPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load profiles from localStorage or API
-    const loadProfiles = () => {
-      const savedProfiles = localStorage.getItem('userProfiles');
-      if (savedProfiles) {
-        setProfiles(JSON.parse(savedProfiles));
-      } else {
-        // Mock data for demonstration
-        setProfiles([
-          {
-            id: '1',
-            name: 'John Doe',
-            title: 'CEO & Founder',
-            company: 'Tech Innovations',
-            image: '/api/placeholder/100/100',
-            status: 'active',
-            views: 1245,
-            clicks: 342,
-            shares: 89,
-            lastUpdated: '2 hours ago',
-            publicUrl: `${getBaseDomain()}/johndoe`
-          },
-          {
-            id: '2',
-            name: 'Jane Smith',
-            title: 'Marketing Director',
-            company: 'Creative Agency',
-            status: 'draft',
-            views: 567,
-            clicks: 123,
-            shares: 34,
-            lastUpdated: '1 day ago',
-            publicUrl: `${getBaseDomain()}/janesmith`
+    // Load profiles from database API with strict user filtering
+    const loadProfiles = async () => {
+      try {
+        // Step 1: Verify user authentication
+        const authResponse = await fetch('/api/auth/me');
+        if (!authResponse.ok) {
+          console.error('Not authenticated, redirecting to login');
+          router.push('/login?redirect=/profiles/dashboard');
+          return;
+        }
+
+        const authData = await authResponse.json();
+        const currentUserEmail = authData.user?.email;
+        const currentUserId = authData.user?.id;
+
+        if (!currentUserEmail || !currentUserId) {
+          console.error('No user email/id found, redirecting to login');
+          router.push('/login?redirect=/profiles/dashboard');
+          return;
+        }
+
+        console.log('✅ Authenticated user:', currentUserEmail);
+
+        // Step 2: Fetch profiles from database (filtered by user_id on server)
+        const profilesResponse = await fetch('/api/profiles');
+
+        if (profilesResponse.ok) {
+          const profilesData = await profilesResponse.json();
+
+          if (profilesData.success && profilesData.profiles) {
+            // Transform database profiles to match dashboard format
+            const transformedProfiles = profilesData.profiles.map((profile: any) => ({
+              id: profile.id,
+              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unnamed Profile',
+              title: profile.job_title || profile.title || '',
+              company: profile.company_name || '',
+              image: profile.profile_photo_url || '',
+              status: 'active' as const,
+              views: 0, // TODO: Fetch from analytics
+              clicks: 0, // TODO: Fetch from analytics
+              shares: 0, // TODO: Fetch from analytics
+              lastUpdated: new Date(profile.updated_at).toLocaleDateString(),
+              publicUrl: profile.custom_url ? `${getBaseDomain()}/${profile.custom_url}` : `${getBaseDomain()}/p/${profile.id}`,
+              qrCode: profile.qr_code_url
+            }));
+
+            setProfiles(transformedProfiles);
+            console.log('✅ Loaded', transformedProfiles.length, 'profile(s) from database');
+
+            // Step 3: Clean up localStorage - Remove profiles that don't belong to current user
+            try {
+              const localProfiles = localStorage.getItem('userProfiles');
+              if (localProfiles) {
+                const parsed = JSON.parse(localProfiles);
+                // Filter to keep only current user's profiles (by email match)
+                const userSpecificProfiles = parsed.filter((p: any) =>
+                  p.email === currentUserEmail || p.userEmail === currentUserEmail
+                );
+
+                if (userSpecificProfiles.length !== parsed.length) {
+                  console.log(`🧹 Cleaned localStorage: removed ${parsed.length - userSpecificProfiles.length} profiles from other users`);
+                  if (userSpecificProfiles.length > 0) {
+                    localStorage.setItem('userProfiles', JSON.stringify(userSpecificProfiles));
+                  } else {
+                    localStorage.removeItem('userProfiles');
+                  }
+                }
+              }
+            } catch (cleanupError) {
+              console.error('Error cleaning localStorage:', cleanupError);
+            }
+          } else {
+            // No profiles in database yet
+            setProfiles([]);
+            console.log('ℹ️ No profiles found in database');
           }
-        ]);
+        } else {
+          console.error('Failed to fetch profiles from API');
+          // Don't fall back to localStorage to prevent showing other users' data
+          setProfiles([]);
+        }
+
+      } catch (error) {
+        console.error('Error loading profiles:', error);
+        // On error, redirect to login to ensure security
+        router.push('/login?redirect=/profiles/dashboard');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadProfiles();
-  }, []);
+  }, [router]);
 
   const handleDeleteProfile = (id: string) => {
     if (confirm('Are you sure you want to delete this profile?')) {
+      // Only remove from UI and localStorage (not database)
       setProfiles(profiles.filter(p => p.id !== id));
-      localStorage.setItem('userProfiles', JSON.stringify(profiles.filter(p => p.id !== id)));
+
+      const localProfiles = localStorage.getItem('userProfiles');
+      if (localProfiles) {
+        const parsed = JSON.parse(localProfiles);
+        const filtered = parsed.filter((p: any) => p.id !== id);
+        if (filtered.length > 0) {
+          localStorage.setItem('userProfiles', JSON.stringify(filtered));
+        } else {
+          localStorage.removeItem('userProfiles');
+        }
+      }
+      console.log('✅ Profile removed from view');
     }
   };
 
   const handleDuplicateProfile = (profile: Profile) => {
-    const newProfile = {
-      ...profile,
-      id: Date.now().toString(),
-      name: `${profile.name} (Copy)`,
-      status: 'draft' as const,
-      views: 0,
-      clicks: 0,
-      shares: 0,
-      lastUpdated: 'Just now'
-    };
-    const updatedProfiles = [...profiles, newProfile];
-    setProfiles(updatedProfiles);
-    localStorage.setItem('userProfiles', JSON.stringify(updatedProfiles));
+    // For now, navigate to builder with template mode
+    // In the future, we can add a proper duplication API
+    alert('Profile duplication coming soon! For now, you can create a new profile and manually copy the information.');
   };
 
   const getStatusColor = (status: string) => {
