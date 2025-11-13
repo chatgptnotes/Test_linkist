@@ -13,7 +13,7 @@ import {
   LinkedIn,
   Instagram,
   Facebook,
-  Twitter,
+  X as XIcon,
   GitHub,
   YouTube,
   Language,
@@ -23,7 +23,8 @@ import {
   ContentCopy,
   QrCode2,
   CloudDownload,
-  PersonAdd
+  PersonAdd,
+  WhatsApp
 } from '@mui/icons-material';
 
 // Currency symbols mapping
@@ -154,7 +155,7 @@ export default function ProfilePreviewPage() {
             primaryEmail: dbProfile.email || '',
             secondaryEmail: dbProfile.alternate_email || '',
             mobileNumber: dbProfile.phone || '',
-            whatsappNumber: '',
+            whatsappNumber: dbProfile.whatsapp || '',
             jobTitle: dbProfile.title || '',
             companyName: dbProfile.company || '',
             companyWebsite: dbProfile.website || '',
@@ -517,6 +518,14 @@ export default function ProfilePreviewPage() {
                         </a>
                       </div>
                     )}
+                    {profileData.showWhatsappPublicly && profileData.whatsappNumber && (
+                      <div className="flex items-center gap-3">
+                        <WhatsApp className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <a href={`https://wa.me/${profileData.whatsappNumber.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 hover:text-green-600">
+                          {profileData.whatsappNumber}
+                        </a>
+                      </div>
+                    )}
                     {profileData.showCompanyWebsite && profileData.companyWebsite && (
                       <div className="flex items-start gap-3">
                         <Language className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -657,7 +666,7 @@ export default function ProfilePreviewPage() {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:border-gray-900 hover:bg-gray-50 hover:text-gray-900 transition-colors text-sm"
                     >
-                      <Twitter className="w-5 h-5" />
+                      <XIcon className="w-5 h-5" />
                       X
                     </a>
                   )}
