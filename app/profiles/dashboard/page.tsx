@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import QRCode from 'qrcode';
 import { getBaseDomain } from '@/lib/get-base-url';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -18,6 +19,7 @@ import MouseIcon from '@mui/icons-material/Mouse';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 
 // Icon aliases
 const Plus = AddIcon;
@@ -33,6 +35,7 @@ const MousePointer = MouseIcon;
 const TrendingUp = TrendingUpIcon;
 const Copy = ContentCopyIcon;
 const ExternalLink = OpenInNewIcon;
+const CloudDownload = CloudDownloadIcon;
 
 interface Profile {
   id: string;
@@ -58,48 +61,103 @@ export default function ProfileDashboard() {
   // Check founding member status
   const [isFoundingMember, setIsFoundingMember] = useState(false);
   const [foundingMemberPlan, setFoundingMemberPlan] = useState<string | null>(null);
+  // QR Code modal state
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [selectedProfileForQr, setSelectedProfileForQr] = useState<Profile | null>(null);
 
   useEffect(() => {
-    // Load profiles from localStorage or API
-    const loadProfiles = () => {
+    // Load profiles from authenticated API
+    const loadProfiles = async () => {
+      try {
+        // Check authentication first
+        const authResponse = await fetch('/api/auth/me');
+
+        if (!authResponse.ok) {
+          console.log('⚠️ Not authenticated, redirecting to login...');
+          router.push('/login?returnUrl=/profiles/dashboard');
+          return;
+        }
+
+        const authData = await authResponse.json();
+
+        if (!authData.isAuthenticated || !authData.user?.email) {
+          console.log('⚠️ Not authenticated, redirecting to login...');
+          router.push('/login?returnUrl=/profiles/dashboard');
+          return;
+        }
+
+        const userEmail = authData.user.email;
+        console.log('🔍 Loading profiles for user:', userEmail);
+
+        // Fetch profiles from API (filtered by current user)
+        const profilesResponse = await fetch('/api/profiles');
+
+        if (profilesResponse.ok) {
+          const result = await profilesResponse.json();
+
+          if (result.success && result.profiles) {
+            console.log('✅ Profiles loaded from database:', result.profiles.length);
+
+            // Transform API profiles to match component interface
+            const transformedProfiles = result.profiles.map((p: any) => ({
+              id: p.id,
+              name: p.name || 'Unnamed Profile',
+              title: p.title || p.designation || '',
+              company: p.company || '',
+              image: p.image || p.profile_image,
+              status: 'active' as const,
+              views: 0,
+              clicks: 0,
+              shares: 0,
+              lastUpdated: new Date(p.updated_at || p.created_at).toLocaleDateString(),
+              publicUrl: `${getBaseDomain()}/${p.username || p.id}`
+            }));
+
+            setProfiles(transformedProfiles);
+          } else {
+            console.log('⚠️ No profiles found, trying localStorage...');
+            loadProfilesFromLocalStorage(userEmail);
+          }
+        } else {
+          console.log('⚠️ Profile API failed, trying localStorage...');
+          loadProfilesFromLocalStorage(userEmail);
+        }
+
+      } catch (error) {
+        console.error('❌ Error loading profiles:', error);
+        // Fallback to localStorage
+        const savedProfiles = localStorage.getItem('userProfiles');
+        if (savedProfiles) {
+          setProfiles(JSON.parse(savedProfiles));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const loadProfilesFromLocalStorage = (userEmail: string) => {
       const savedProfiles = localStorage.getItem('userProfiles');
       if (savedProfiles) {
-        setProfiles(JSON.parse(savedProfiles));
+        try {
+          const allProfiles = JSON.parse(savedProfiles);
+          // Filter profiles by current user if email is stored
+          const userProfiles = allProfiles.filter((p: any) =>
+            !p.userEmail || p.userEmail === userEmail
+          );
+          console.log('✅ Loaded profiles from localStorage:', userProfiles.length);
+          setProfiles(userProfiles);
+        } catch (error) {
+          console.error('Error parsing localStorage profiles:', error);
+          setProfiles([]);
+        }
       } else {
-        // Mock data for demonstration
-        setProfiles([
-          {
-            id: '1',
-            name: 'John Doe',
-            title: 'CEO & Founder',
-            company: 'Tech Innovations',
-            image: '/api/placeholder/100/100',
-            status: 'active',
-            views: 1245,
-            clicks: 342,
-            shares: 89,
-            lastUpdated: '2 hours ago',
-            publicUrl: `${getBaseDomain()}/johndoe`
-          },
-          {
-            id: '2',
-            name: 'Jane Smith',
-            title: 'Marketing Director',
-            company: 'Creative Agency',
-            status: 'draft',
-            views: 567,
-            clicks: 123,
-            shares: 34,
-            lastUpdated: '1 day ago',
-            publicUrl: `${getBaseDomain()}/janesmith`
-          }
-        ]);
+        setProfiles([]);
       }
-      setLoading(false);
     };
 
     loadProfiles();
-  }, []);
+  }, [router]);
 
   const handleDeleteProfile = (id: string) => {
     if (confirm('Are you sure you want to delete this profile?')) {
@@ -153,6 +211,71 @@ export default function ProfileDashboard() {
     };
     checkFoundingMember();
   }, []);
+
+  // Generate QR Code when a profile is selected
+  useEffect(() => {
+    const generateQrCode = async () => {
+      if (!selectedProfileForQr) return;
+
+      try {
+        const qrDataUrl = await QRCode.toDataURL(selectedProfileForQr.publicUrl, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        setQrCodeUrl(qrDataUrl);
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+      }
+    };
+
+    if (selectedProfileForQr) {
+      generateQrCode();
+    }
+  }, [selectedProfileForQr]);
+
+  const handleDownloadQrCode = () => {
+    if (!qrCodeUrl) return;
+
+    const a = document.createElement('a');
+    a.href = qrCodeUrl;
+    a.download = `${selectedProfileForQr?.name || 'profile'}-qr-code.png`;
+    a.click();
+  };
+
+  const handleShareQrCode = async () => {
+    if (!qrCodeUrl || !selectedProfileForQr) return;
+
+    try {
+      // Convert data URL to blob
+      const response = await fetch(qrCodeUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'qr-code.png', { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Profile QR Code',
+          text: `Scan this QR code to view my profile: ${selectedProfileForQr.publicUrl}`
+        });
+      } else {
+        // Fallback: just download
+        handleDownloadQrCode();
+      }
+    } catch (error) {
+      console.error('Error sharing QR code:', error);
+      // Fallback: download
+      handleDownloadQrCode();
+    }
+  };
+
+  const handleOpenQrCode = (profile: Profile) => {
+    setSelectedProfileForQr(profile);
+    setShowQrCode(true);
+  };
 
   if (loading) {
     return (
@@ -410,8 +533,9 @@ export default function ProfileDashboard() {
                       View
                     </Link>
                     <button
-                      onClick={() => router.push(`/profiles/${profile.id}/qr`)}
+                      onClick={() => handleOpenQrCode(profile)}
                       className="bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition"
+                      title="Show QR Code"
                     >
                       <QrCode className="h-4 w-4" />
                     </button>
@@ -427,6 +551,67 @@ export default function ProfileDashboard() {
             </div>
           )}
         </div>
+
+        {/* QR Code Modal */}
+        {showQrCode && qrCodeUrl && selectedProfileForQr && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => setShowQrCode(false)}
+          >
+            <div
+              className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Profile QR Code</h3>
+                <button
+                  onClick={() => setShowQrCode(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                  <img
+                    src={qrCodeUrl}
+                    alt="Profile QR Code"
+                    className="w-64 h-64"
+                  />
+                </div>
+
+                <div className="text-center mt-4">
+                  <p className="text-lg font-semibold text-gray-900">{selectedProfileForQr.name}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Scan this QR code to visit the profile
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2 font-mono break-all">
+                    {selectedProfileForQr.publicUrl}
+                  </p>
+                </div>
+
+                <div className="flex gap-3 mt-6 w-full">
+                  <button
+                    onClick={handleDownloadQrCode}
+                    className="flex-1 px-4 py-3 bg-[#263252] text-white rounded-lg hover:bg-[#1a2339] transition flex items-center justify-center gap-2 font-medium"
+                  >
+                    <CloudDownload className="w-5 h-5" />
+                    Download
+                  </button>
+                  <button
+                    onClick={handleShareQrCode}
+                    className="flex-1 px-4 py-3 bg-[#263252] text-white rounded-lg hover:bg-[#1a2339] transition flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Share2 className="w-5 h-5" />
+                    Share
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
