@@ -132,6 +132,29 @@ export async function POST(request: NextRequest) {
       avatar_url: data.profilePhoto || null,
       custom_url: finalCustomUrl,
       profile_url: fullProfileUrl,
+      display_settings: {
+        // Save visibility toggles to display_settings for preview page
+        showEmailPublicly: data.showEmailPublicly ?? true,
+        showSecondaryEmailPublicly: data.showSecondaryEmailPublicly ?? true,
+        showMobilePublicly: data.showMobilePublicly ?? true,
+        showWhatsappPublicly: data.showWhatsappPublicly ?? false,
+        showJobTitle: data.showJobTitle ?? true,
+        showCompanyName: data.showCompanyName ?? true,
+        showCompanyWebsite: data.showCompanyWebsite ?? true,
+        showCompanyAddress: data.showCompanyAddress ?? true,
+        showIndustry: data.showIndustry ?? true,
+        showSkills: data.showSkills ?? true,
+        showLinkedin: data.showLinkedin ?? false,
+        showInstagram: data.showInstagram ?? false,
+        showFacebook: data.showFacebook ?? false,
+        showTwitter: data.showTwitter ?? false,
+        showBehance: data.showBehance ?? false,
+        showDribbble: data.showDribbble ?? false,
+        showGithub: data.showGithub ?? false,
+        showYoutube: data.showYoutube ?? false,
+        showProfilePhoto: data.showProfilePhoto ?? true,
+        showBackgroundImage: data.showBackgroundImage ?? true
+      },
       preferences: {
         // Basic Information
         secondaryEmail: data.secondaryEmail || '',

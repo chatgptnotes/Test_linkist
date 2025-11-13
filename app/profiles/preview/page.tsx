@@ -188,6 +188,8 @@ export default function ProfilePreviewPage() {
           // Get the most recent profile
           const dbProfile = data.profiles[0];
           console.log('✅ Found profile in database:', dbProfile.id);
+          console.log('🔍 DEBUG - dbProfile.whatsapp:', dbProfile.whatsapp);
+          console.log('🔍 DEBUG - dbProfile.display_settings:', JSON.stringify(dbProfile.display_settings, null, 2));
 
           // Map database profile to preview format
           const mappedProfile: ProfileData = {
@@ -245,6 +247,8 @@ export default function ProfilePreviewPage() {
 
           console.log('✅ Mapped profile data for preview');
           console.log('📋 Services loaded:', dbProfile.services?.length || 0);
+          console.log('🔍 DEBUG - mappedProfile.whatsappNumber:', mappedProfile.whatsappNumber);
+          console.log('🔍 DEBUG - mappedProfile.showWhatsappPublicly:', mappedProfile.showWhatsappPublicly);
           setProfileData(mappedProfile);
 
           // Set customUrl from database if not already set from localStorage
