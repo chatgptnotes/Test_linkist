@@ -112,12 +112,25 @@ export async function getAuthenticatedUser(request: NextRequest): Promise<AuthSe
 
       if (sessionData) {
         // Fetch user details from database to get first_name and last_name
-        const { supabase: dbClient } = createMiddlewareClient(request)
-        const { data: userData } = await dbClient
-          .from('users')
-          .select('first_name, last_name')
-          .eq('id', sessionData.userId)
-          .single()
+        let firstName: string | null = null
+        let lastName: string | null = null
+
+        try {
+          const { supabase: dbClient } = createMiddlewareClient(request)
+          const { data: userData, error: userError } = await dbClient
+            .from('users')
+            .select('first_name, last_name')
+            .eq('id', sessionData.userId)
+            .maybeSingle() // Use maybeSingle to avoid errors if user not found
+
+          if (!userError && userData) {
+            firstName = userData.first_name || null
+            lastName = userData.last_name || null
+          }
+        } catch (error) {
+          // Silently fail user data fetch - not critical for auth
+          console.warn('Failed to fetch user details:', error)
+        }
 
         const sessionUser: AuthUser = {
           id: sessionData.userId,
@@ -125,8 +138,8 @@ export async function getAuthenticatedUser(request: NextRequest): Promise<AuthSe
           role: sessionData.role,
           email_verified: true,
           created_at: new Date(sessionData.createdAt).toISOString(),
-          first_name: userData?.first_name || null,
-          last_name: userData?.last_name || null,
+          first_name: firstName,
+          last_name: lastName,
         }
 
         return {

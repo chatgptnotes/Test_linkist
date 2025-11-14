@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate environment variables
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Missing Supabase credentials:', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      });
+      return NextResponse.json(
+        { success: false, error: 'Server configuration error. Please contact support.' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { email, mobile } = body;
 
@@ -17,19 +29,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Supabase client with service role key
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Create Supabase client with service role key to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     let exists = false;
 
     // Check if email exists
     if (email) {
       const normalizedEmail = email.toLowerCase().trim();
-      const { data: emailUser } = await supabase
+      const { data: emailUser, error: emailError } = await supabase
         .from('users')
         .select('id')
         .eq('email', normalizedEmail)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors if not found
+
+      if (emailError) {
+        console.error('❌ Email check error:', emailError);
+        // Don't fail the request, just log and continue
+      }
 
       if (emailUser) {
         exists = true;
@@ -39,11 +61,16 @@ export async function POST(request: NextRequest) {
     // Check if mobile exists
     if (mobile && !exists) {
       const normalizedMobile = mobile.replace(/\s/g, ''); // Remove spaces
-      const { data: mobileUser } = await supabase
+      const { data: mobileUser, error: mobileError } = await supabase
         .from('users')
         .select('id')
         .eq('phone_number', normalizedMobile)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors if not found
+
+      if (mobileError) {
+        console.error('❌ Mobile check error:', mobileError);
+        // Don't fail the request, just log and continue
+      }
 
       if (mobileUser) {
         exists = true;

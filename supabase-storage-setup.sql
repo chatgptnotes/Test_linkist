@@ -10,6 +10,10 @@ VALUES ('company-logos', 'company-logos', true);
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('background-images', 'background-images', true);
 
+-- Create storage bucket for card assets (logos, photos, backgrounds, qr codes, proofs, certifications)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('card-assets', 'card-assets', true);
+
 -- Set up storage policies for profile-photos bucket
 CREATE POLICY "Public Access for profile photos" ON storage.objects
 FOR SELECT USING (bucket_id = 'profile-photos');
@@ -75,6 +79,34 @@ FOR DELETE USING (
   bucket_id = 'background-images'
   AND auth.role() = 'authenticated'
 );
+
+-- Set up storage policies for card-assets bucket
+CREATE POLICY "Public Access for card assets" ON storage.objects
+FOR SELECT USING (bucket_id = 'card-assets');
+
+CREATE POLICY "Authenticated users can upload card assets" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'card-assets'
+  AND auth.role() = 'authenticated'
+);
+
+CREATE POLICY "Users can update their own card assets" ON storage.objects
+FOR UPDATE USING (
+  bucket_id = 'card-assets'
+  AND auth.role() = 'authenticated'
+);
+
+CREATE POLICY "Users can delete their own card assets" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'card-assets'
+  AND auth.role() = 'authenticated'
+);
+
+-- Fix card_assets asset_type check constraint to include certifications and other types
+-- Drop existing constraint and add new one with updated values
+ALTER TABLE public.card_assets DROP CONSTRAINT IF EXISTS card_assets_asset_type_check;
+ALTER TABLE public.card_assets ADD CONSTRAINT card_assets_asset_type_check
+  CHECK (asset_type IN ('logo', 'photo', 'background', 'qr_code', 'proof', 'certification', 'other'));
 
 -- Update profiles table to add new columns for complete profile data
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS job_title character varying(200);
