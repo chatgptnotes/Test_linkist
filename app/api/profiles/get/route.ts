@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
         description: service.description || '',
         pricing: service.pricing || '',
         category: service.category || '',
+        currency: service.currency || 'USD',
         showPublicly: service.is_active
       })),
 
