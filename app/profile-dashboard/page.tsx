@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getBaseUrl } from '@/lib/get-base-url';
+import QRCode from 'qrcode';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -22,6 +23,9 @@ import PeopleIcon from '@mui/icons-material/People';
 import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import CloseIcon from '@mui/icons-material/Close';
 
 // Icon aliases
 const Package = Inventory2Icon;
@@ -42,6 +46,9 @@ const Users = PeopleIcon;
 const EyeIcon = RemoveRedEyeIcon;
 const WhatsApp = WhatsAppIcon;
 const MailIcon = MailOutlineIcon;
+const QrCode2 = QrCode2Icon;
+const CloudDownload = CloudDownloadIcon;
+const Close = CloseIcon;
 
 interface User {
   id: string;
@@ -107,10 +114,50 @@ export default function AccountPage() {
   const [profileData, setProfileData] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [showQrCode, setShowQrCode] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadData();
   }, []);
+
+  // Generate QR Code when profile data is available
+  useEffect(() => {
+    const generateQrCode = async () => {
+      const baseUrl = getBaseUrl();
+      let username = 'your-profile';
+
+      if (profileData?.customUrl) {
+        username = profileData.customUrl;
+      } else if (user?.first_name) {
+        username = user.first_name.toLowerCase().replace(/\s+/g, '-');
+      } else if (profileData?.first_name) {
+        username = profileData.first_name.toLowerCase().replace(/\s+/g, '-');
+      } else if (profileData?.email) {
+        username = profileData.email.split('@')[0];
+      }
+
+      const profileUrl = `${baseUrl}/${username}`;
+
+      try {
+        const qrDataUrl = await QRCode.toDataURL(profileUrl, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        setQrCodeUrl(qrDataUrl);
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+      }
+    };
+
+    if (profileData || user) {
+      generateQrCode();
+    }
+  }, [profileData, user]);
 
   const loadAnalyticsData = async (email: string) => {
     try {
@@ -361,6 +408,58 @@ export default function AccountPage() {
     router.push('/login');
   };
 
+  const handleDownloadQrCode = () => {
+    if (!qrCodeUrl) return;
+
+    const a = document.createElement('a');
+    a.href = qrCodeUrl;
+    a.download = `profile-qr-code.png`;
+    a.click();
+  };
+
+  const handleShareQrCode = async () => {
+    if (!qrCodeUrl) return;
+
+    const baseUrl = getBaseUrl();
+    let username = 'your-profile';
+
+    if (profileData?.customUrl) {
+      username = profileData.customUrl;
+    } else if (user?.first_name) {
+      username = user.first_name.toLowerCase().replace(/\s+/g, '-');
+    } else if (profileData?.first_name) {
+      username = profileData.first_name.toLowerCase().replace(/\s+/g, '-');
+    } else if (profileData?.email) {
+      username = profileData.email.split('@')[0];
+    }
+
+    const profileUrl = `${baseUrl}/${username}`;
+
+    try {
+      // Convert data URL to blob
+      const response = await fetch(qrCodeUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'qr-code.png', { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Profile QR Code',
+          text: `Scan this QR code to view my profile: ${profileUrl}`
+        });
+      } else {
+        // Fallback: copy URL to clipboard
+        await navigator.clipboard.writeText(profileUrl);
+        alert('QR code sharing not supported. URL copied to clipboard!');
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing QR code:', error);
+        alert('Failed to share QR code');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -527,6 +626,7 @@ export default function AccountPage() {
                 </code>
               </div>
             </div>
+            <div className="flex gap-2">
             <button
               type="button"
               onClick={() => {
@@ -604,7 +704,7 @@ export default function AccountPage() {
 
                 copyToClipboard(urlToCopy);
               }}
-              className="w-full sm:w-auto"
+              className="flex-1"
               style={{
                 backgroundColor: copied ? '#16a34a' : '#dc2626',
                 color: 'white',
@@ -626,6 +726,37 @@ export default function AccountPage() {
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowQrCode(true)}
+              className="flex-1"
+              style={{
+                backgroundColor: '#263252',
+                color: 'white',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                minHeight: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#1a2339';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#263252';
+              }}
+            >
+              <QrCode2 style={{ width: '20px', height: '20px' }} />
+              QR Code
+            </button>
+            </div>
           </div>
         </div>
 
@@ -813,6 +944,60 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      {showQrCode && qrCodeUrl && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setShowQrCode(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Profile QR Code</h3>
+              <button
+                onClick={() => setShowQrCode(false)}
+                className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition"
+              >
+                <Close className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <img
+                src={qrCodeUrl}
+                alt="Profile QR Code"
+                className="w-64 h-64 border-2 border-[#263252] rounded-lg bg-white p-4"
+              />
+              <p className="text-sm text-gray-600 mt-4 text-center">
+                Scan this QR code to visit this profile
+              </p>
+
+              <div className="flex gap-3 mt-6 w-full">
+                <button
+                  onClick={handleDownloadQrCode}
+                  className="flex-1 px-4 py-3 text-white rounded-lg hover:bg-[#1a2339] transition flex items-center justify-center gap-2 font-medium border-2 border-[#263252]"
+                  style={{ backgroundColor: '#263252' }}
+                >
+                  <CloudDownload className="w-5 h-5" />
+                  Download
+                </button>
+                <button
+                  onClick={handleShareQrCode}
+                  className="flex-1 px-4 py-3 text-white rounded-lg hover:bg-[#b91c1c] transition flex items-center justify-center gap-2 font-medium border-2 border-[#dc2626]"
+                  style={{ backgroundColor: '#dc2626' }}
+                >
+                  <Share className="w-5 h-5" />
+                  Share
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
