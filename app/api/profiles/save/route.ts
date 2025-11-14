@@ -239,6 +239,7 @@ export async function POST(request: NextRequest) {
             description: service.description || '',
             pricing: service.pricing || '',
             category: service.category || '',
+            currency: service.currency || 'USD',
             is_active: service.showPublicly !== false,
             display_order: index
           }))

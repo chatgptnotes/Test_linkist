@@ -89,6 +89,7 @@ export async function GET(
         description: service.description || '',
         pricing: service.pricing || '',
         category: service.category || '',
+        currency: service.currency || 'USD',
         showPublicly: true // Only active services are fetched
       }))
     };
