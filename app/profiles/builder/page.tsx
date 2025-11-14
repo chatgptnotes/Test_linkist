@@ -794,16 +794,29 @@ function ProfileBuilderContent() {
     try {
       toast.loading('Uploading certification...', { id: 'cert-upload' });
 
-      // For now, create a temporary URL (similar to photo upload)
-      // TODO: Upload to Supabase Storage
-      const fileUrl = URL.createObjectURL(file);
+      // Upload to Supabase Storage
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'certifications');
+      formData.append('isPublic', 'true'); // Enable public access for third-party viewing
 
-      // Create certification object
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      // Create certification object with real Supabase URL
       const newCertification = {
-        id: `cert-${Date.now()}`,
+        id: result.data.id,
         name: file.name,
         title: '', // User must enter title
-        url: fileUrl,
+        url: result.data.publicUrl, // Real Supabase public URL (not blob URL)
         size: file.size,
         type: file.type,
         showPublicly: true // Default to visible
@@ -963,7 +976,9 @@ function ProfileBuilderContent() {
                   title: '',
                   showPublicly: true
                 })) : [],
-                certifications: [],
+                certifications: Array.isArray(profileToEdit.preferences?.certifications)
+                  ? profileToEdit.preferences.certifications
+                  : [],
                 services: Array.isArray(profileToEdit.services) ? profileToEdit.services : []
               };
 

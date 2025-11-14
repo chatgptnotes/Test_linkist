@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS card_assets (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-  asset_type VARCHAR(20) CHECK (asset_type IN ('logo', 'photo', 'background', 'qr_code', 'proof')),
+  asset_type VARCHAR(20) CHECK (asset_type IN ('logo', 'photo', 'background', 'qr_code', 'proof', 'certification', 'other')),
   file_name VARCHAR(255) NOT NULL,
   file_path TEXT NOT NULL, -- Supabase storage path
   file_size INTEGER,

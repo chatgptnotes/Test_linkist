@@ -16,10 +16,11 @@ const STORAGE_CONFIG = {
   ],
   folders: {
     logos: 'logos',
-    photos: 'photos', 
+    photos: 'photos',
     backgrounds: 'backgrounds',
     qr_codes: 'qr_codes',
     proofs: 'proofs',
+    certifications: 'certifications', // For certificates and attachments
     temp: 'temp' // For temporary uploads
   },
   imageResolutions: {
@@ -249,10 +250,11 @@ export class SupabaseStorageService {
   private getAssetType(folder?: keyof typeof STORAGE_CONFIG.folders): string {
     switch (folder) {
       case 'logos': return 'logo'
-      case 'photos': return 'photo' 
+      case 'photos': return 'photo'
       case 'backgrounds': return 'background'
       case 'qr_codes': return 'qr_code'
       case 'proofs': return 'proof'
+      case 'certifications': return 'certification'
       default: return 'other'
     }
   }

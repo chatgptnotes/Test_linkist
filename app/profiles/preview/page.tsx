@@ -188,7 +188,7 @@ export default function ProfilePreviewPage() {
           // Get the most recent profile
           const dbProfile = data.profiles[0];
           console.log('✅ Found profile in database:', dbProfile.id);
-          console.log('🔍 DEBUG - dbProfile.whatsapp:', dbProfile.whatsapp);
+          console.log('🔍 DEBUG - dbProfile.whatsapp_number:', dbProfile.whatsapp_number);
           console.log('🔍 DEBUG - dbProfile.display_settings:', JSON.stringify(dbProfile.display_settings, null, 2));
 
           // Map database profile to preview format
@@ -198,7 +198,7 @@ export default function ProfilePreviewPage() {
             primaryEmail: dbProfile.email || '',
             secondaryEmail: dbProfile.alternate_email || '',
             mobileNumber: dbProfile.phone_number || '',
-            whatsappNumber: dbProfile.whatsapp || '',
+            whatsappNumber: dbProfile.whatsapp_number || '',
             jobTitle: dbProfile.job_title || '',
             companyName: dbProfile.company_name || '',
             companyWebsite: dbProfile.company_website || '',
