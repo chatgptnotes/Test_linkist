@@ -201,22 +201,33 @@ export async function POST(request: NextRequest) {
         // Get the stored OTP record to check for user registration data
         const mobileRecord = await SupabaseMobileOTPStore.get(identifier);
 
-        if (mobileRecord && mobileRecord.user_data) {
+        console.log('📋 [DEBUG] Mobile OTP record:', {
+          exists: !!mobileRecord,
+          has_temp_user_data: !!mobileRecord?.temp_user_data,
+          temp_user_data: mobileRecord?.temp_user_data
+        });
+
+        if (mobileRecord && mobileRecord.temp_user_data) {
           console.log('🆕 [verify-otp] Creating new user account for mobile:', identifier);
 
           try {
-            // Create the user account now that OTP is verified
+            // Create the user account with pending status
             user = await SupabaseUserStore.upsertByEmail({
-              email: mobileRecord.user_data.email || `${Date.now()}@temp-mobile-user.com`, // Temporary email if not provided
-              first_name: mobileRecord.user_data.firstName,
-              last_name: mobileRecord.user_data.lastName,
+              email: mobileRecord.temp_user_data.email || `${Date.now()}@temp-mobile-user.com`, // Temporary email if not provided
+              first_name: mobileRecord.temp_user_data.firstName,
+              last_name: mobileRecord.temp_user_data.lastName,
               phone_number: identifier,
               role: 'user',
+              status: 'pending',
               email_verified: false,
-              mobile_verified: true,
+              mobile_verified: false,
             });
 
-            console.log('✅ [verify-otp] New user created successfully with mobile:', user.id);
+            console.log('✅ [verify-otp] New user created with pending status:', user.id);
+
+            // Activate user now that OTP is verified
+            user = await SupabaseUserStore.activateUser(user.id, 'mobile');
+            console.log('✅ [verify-otp] User activated successfully with mobile verification');
           } catch (createError) {
             console.error('❌ [verify-otp] Failed to create user for mobile:', createError);
             return NextResponse.json(
@@ -225,16 +236,38 @@ export async function POST(request: NextRequest) {
             );
           }
         } else {
-          console.error('❌ [verify-otp] User not found for any phone format and no registration data. Tried:', phoneFormats);
+          console.error('❌ [verify-otp] User not found for any phone format and no registration data.');
+          console.error('❌ [verify-otp] Tried phone formats:', phoneFormats);
+          console.error('❌ [verify-otp] OTP record exists:', !!mobileRecord);
+          console.error('❌ [verify-otp] temp_user_data is null:', mobileRecord && !mobileRecord.temp_user_data);
+
+          if (mobileRecord && !mobileRecord.temp_user_data) {
+            return NextResponse.json(
+              {
+                error: 'Registration data not found. This may be because:\n1. The registration data was not saved during signup\n2. You are trying to login instead of register\n\nPlease try registering again.',
+                debug: {
+                  otp_record_exists: true,
+                  temp_user_data_missing: true,
+                  solution: 'Please start registration process again'
+                }
+              },
+              { status: 400 }
+            );
+          }
+
           return NextResponse.json(
             { error: 'User account not found. Please register first.' },
             { status: 404 }
           );
         }
+      } else {
+        // Existing user - just update verification status and activate if needed
+        if (user.status === 'pending') {
+          user = await SupabaseUserStore.activateUser(user.id, 'mobile');
+        } else {
+          await SupabaseUserStore.updateVerificationStatus(user.email, 'mobile', true);
+        }
       }
-
-      // Update mobile verification status
-      await SupabaseUserStore.updateVerificationStatus(user.email, 'mobile', true);
     }
 
     // ==================== EMAIL OTP VERIFICATION ====================
@@ -279,23 +312,34 @@ export async function POST(request: NextRequest) {
       if (!user) {
         console.log('👤 [verify-otp] User not found, checking if this is new registration for:', normalizedIdentifier);
 
+        console.log('📋 [DEBUG] Email OTP record:', {
+          exists: !!storedRecord,
+          has_temp_user_data: !!storedRecord?.temp_user_data,
+          temp_user_data: storedRecord?.temp_user_data
+        });
+
         // Check if this OTP record has user registration data
-        if (storedRecord.user_data) {
+        if (storedRecord.temp_user_data) {
           console.log('🆕 [verify-otp] Creating new user account for:', normalizedIdentifier);
 
           try {
-            // Create the user account now that OTP is verified
+            // Create the user account with pending status
             user = await SupabaseUserStore.upsertByEmail({
               email: normalizedIdentifier,
-              first_name: storedRecord.user_data.firstName,
-              last_name: storedRecord.user_data.lastName,
-              phone_number: storedRecord.user_data.phone || null,
+              first_name: storedRecord.temp_user_data.firstName,
+              last_name: storedRecord.temp_user_data.lastName,
+              phone_number: storedRecord.temp_user_data.phone || null,
               role: 'user',
-              email_verified: true,
+              status: 'pending',
+              email_verified: false,
               mobile_verified: false,
             });
 
-            console.log('✅ [verify-otp] New user created successfully:', user.id);
+            console.log('✅ [verify-otp] New user created with pending status:', user.id);
+
+            // Activate user now that OTP is verified
+            user = await SupabaseUserStore.activateUser(user.id, 'email');
+            console.log('✅ [verify-otp] User activated successfully with email verification');
           } catch (createError) {
             console.error('❌ [verify-otp] Failed to create user:', createError);
             return NextResponse.json(
@@ -305,15 +349,36 @@ export async function POST(request: NextRequest) {
           }
         } else {
           console.error('❌ [verify-otp] User not found and no registration data available for:', normalizedIdentifier);
+          console.error('❌ [verify-otp] OTP record exists:', !!storedRecord);
+          console.error('❌ [verify-otp] temp_user_data is null:', storedRecord && !storedRecord.temp_user_data);
+
+          if (storedRecord && !storedRecord.temp_user_data) {
+            return NextResponse.json(
+              {
+                error: 'Registration data not found. This may be because:\n1. The registration data was not saved during signup\n2. You are trying to login instead of register\n\nPlease try registering again.',
+                debug: {
+                  otp_record_exists: true,
+                  temp_user_data_missing: true,
+                  solution: 'Please start registration process again'
+                }
+              },
+              { status: 400 }
+            );
+          }
+
           return NextResponse.json(
             { error: 'User account not found. Please register first.' },
             { status: 404 }
           );
         }
+      } else {
+        // Existing user - activate if pending, otherwise just update verification status
+        if (user.status === 'pending') {
+          user = await SupabaseUserStore.activateUser(user.id, 'email');
+        } else {
+          await SupabaseUserStore.updateVerificationStatus(normalizedIdentifier, 'email', true);
+        }
       }
-
-      // Update email verification status
-      await SupabaseUserStore.updateVerificationStatus(normalizedIdentifier, 'email', true);
 
       // Clean up
       await SupabaseEmailOTPStore.delete(normalizedIdentifier);
@@ -329,7 +394,29 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [verify-otp] User found:', user.id);
 
-    // Create user session
+    // Check user status before creating session
+    if (user.status === 'suspended') {
+      return NextResponse.json(
+        { error: 'Your account has been suspended. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
+    if (user.status === 'pending') {
+      return NextResponse.json(
+        { error: 'Your account is pending verification. Please complete the verification process.' },
+        { status: 403 }
+      );
+    }
+
+    if (user.status !== 'active') {
+      return NextResponse.json(
+        { error: 'Your account is not active. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
+    // Create user session (only for active users)
     const sessionId = await SessionStore.create(user.id, user.email, user.role);
     console.log('🔑 [verify-otp] Session created:', sessionId);
 

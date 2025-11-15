@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { mobile } = await request.json();
+    const { mobile, firstName, lastName, email } = await request.json();
+
+    console.log('📱 [send-mobile-otp] Received request:', { mobile, firstName, lastName, email });
 
     // Validate mobile number
     if (!mobile || typeof mobile !== 'string') {
@@ -99,12 +101,24 @@ export async function POST(request: NextRequest) {
       }
 
       await cleanExpiredOTPs();
+
+      // Store OTP with temp_user_data for new registrations
+      const tempUserData = (firstName && lastName) ? {
+        firstName,
+        lastName,
+        email: email || null,
+        phone: mobile
+      } : null;
+
+      console.log('💾 [send-mobile-otp] Storing OTP with temp_user_data:', tempUserData);
+
       const stored = await SupabaseMobileOTPStore.set(mobile, {
         user_id: userId,
         mobile,
         otp,
         expires_at: expiresAt,
-        verified: false
+        verified: false,
+        temp_user_data: tempUserData
       });
 
       if (!stored) {
@@ -115,7 +129,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log(`📱 Mobile OTP for ${mobile}: ${otp} (stored in database, user_id: ${userId || 'guest'})`);
+      console.log(`✅ [send-mobile-otp] Mobile OTP stored: ${mobile}, user_id: ${userId || 'guest'}, has_temp_user_data: ${!!tempUserData}`);
 
       return NextResponse.json({
         success: true,
@@ -199,16 +213,27 @@ export async function POST(request: NextRequest) {
         // Guest OTP
       }
 
+      // Store OTP with temp_user_data for new registrations
+      const tempUserData = (firstName && lastName) ? {
+        firstName,
+        lastName,
+        email: email || null,
+        phone: mobile
+      } : null;
+
+      console.log('💾 [send-mobile-otp] Fallback storing OTP with temp_user_data:', tempUserData);
+
       await cleanExpiredOTPs();
       await SupabaseMobileOTPStore.set(mobile, {
         user_id: userId,
         mobile,
         otp,
         expires_at: expiresAt,
-        verified: false
+        verified: false,
+        temp_user_data: tempUserData
       });
 
-      console.log(`📱 Fallback OTP for ${mobile}: ${otp} (user_id: ${userId || 'guest'})`);
+      console.log(`✅ [send-mobile-otp] Fallback OTP stored: ${mobile}, user_id: ${userId || 'guest'}, has_temp_user_data: ${!!tempUserData}`);
 
       return NextResponse.json({
         success: true,

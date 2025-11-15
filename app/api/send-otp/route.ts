@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
             otp,
             expires_at: new Date(expiresAt).toISOString(),
             verified: false,
-            user_data: {
+            temp_user_data: {
               firstName,
               lastName,
               email,
@@ -230,21 +230,30 @@ export async function POST(request: NextRequest) {
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
             // Store in database as backup with registration data (with fallback)
+            console.log('💾 [DEBUG TWILIO] Storing temp_user_data:', { firstName, lastName, email: null, phone: mobile });
+
             try {
-              await SupabaseMobileOTPStore.set(mobile, {
+              const stored = await SupabaseMobileOTPStore.set(mobile, {
                 user_id: null,
                 mobile,
                 otp,
                 expires_at: new Date(expiresAt).toISOString(),
                 verified: false,
-                user_data: {
+                temp_user_data: {
                   firstName,
                   lastName,
                   email: null,
                   phone: mobile
                 }
               });
+
+              console.log('✅ [DEBUG TWILIO] Storage result:', stored);
+
+              if (!stored) {
+                console.error('❌ [DEBUG TWILIO] Supabase storage returned false!');
+              }
             } catch (error) {
+              console.error('❌ [DEBUG TWILIO] Storage error:', error);
               console.warn('⚠️ Supabase mobile storage failed, using memory fallback:', error);
               memoryOTPStore.set(mobile, {
                 otp,
@@ -273,21 +282,32 @@ export async function POST(request: NextRequest) {
         }
 
         // Database OTP (fallback or primary if no Twilio) with registration data
+        console.log('💾 [DEBUG] Attempting to store OTP for mobile:', mobile);
+        console.log('💾 [DEBUG] firstName:', firstName, '| lastName:', lastName);
+        console.log('💾 [DEBUG] temp_user_data:', { firstName, lastName, email: null, phone: mobile });
+
         try {
-          await SupabaseMobileOTPStore.set(mobile, {
+          const stored = await SupabaseMobileOTPStore.set(mobile, {
             user_id: null,
             mobile,
             otp,
             expires_at: new Date(expiresAt).toISOString(),
             verified: false,
-            user_data: {
+            temp_user_data: {
               firstName,
               lastName,
               email: null,
               phone: mobile
             }
           });
+
+          console.log('✅ [DEBUG] Supabase storage result:', stored);
+
+          if (!stored) {
+            console.error('❌ [DEBUG] Supabase storage returned false - data may not be saved!');
+          }
         } catch (error) {
+          console.error('❌ [DEBUG] Supabase mobile storage failed:', error);
           console.warn('⚠️ Supabase mobile storage failed, using memory fallback:', error);
           memoryOTPStore.set(mobile, {
             otp,

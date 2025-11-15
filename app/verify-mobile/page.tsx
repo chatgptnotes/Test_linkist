@@ -85,12 +85,37 @@ function VerifyMobileContent() {
     setError('');
 
     try {
+      // Get user profile data from localStorage to send registration data
+      const userProfileStr = localStorage.getItem('userProfile');
+      let firstName = '';
+      let lastName = '';
+      let email = '';
+
+      if (userProfileStr) {
+        try {
+          const userProfile = JSON.parse(userProfileStr);
+          firstName = userProfile.firstName || '';
+          lastName = userProfile.lastName || '';
+          email = userProfile.email || '';
+          console.log('📋 [verify-mobile] Sending registration data:', { firstName, lastName, email, mobile: phoneNumber });
+        } catch (parseError) {
+          console.error('Failed to parse userProfile from localStorage:', parseError);
+        }
+      } else {
+        console.warn('⚠️ [verify-mobile] No userProfile found in localStorage - this may be a login attempt');
+      }
+
       const response = await fetch('/api/send-mobile-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ mobile: phoneNumber }),
+        body: JSON.stringify({
+          mobile: phoneNumber,
+          firstName,
+          lastName,
+          email
+        }),
       });
 
       const data = await response.json();
