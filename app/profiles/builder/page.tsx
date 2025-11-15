@@ -38,6 +38,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Leaderboard, RoomService, BuildCircle } from '@mui/icons-material';
+import Skeleton from '@mui/material/Skeleton';
 
 // Icon aliases
 const Person = PersonIcon;
@@ -353,6 +354,9 @@ function ProfileBuilderContent() {
   const [isUploadingBannerImage, setIsUploadingBannerImage] = useState(false);
   const [isUploadingCompanyLogo, setIsUploadingCompanyLogo] = useState(false);
 
+  // Loading state for profile data fetch
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: '',
     lastName: '',
@@ -406,7 +410,15 @@ function ProfileBuilderContent() {
     photos: [],
     videos: [],
     certifications: [],
-    services: []
+    services: [{
+      id: Date.now().toString(),
+      title: '',
+      description: '',
+      pricing: '',
+      currency: 'USD',
+      category: '',
+      showPublicly: true
+    }]
   });
 
   // File input ref for photo uploads
@@ -859,6 +871,7 @@ function ProfileBuilderContent() {
   // Fetch existing profile data on component mount
   useEffect(() => {
     const fetchProfileData = async () => {
+      setIsLoadingProfile(true);
       try {
         console.log('🔄 Starting profile data fetch from DATABASE...');
         console.log('📋 Profile ID from URL:', profileId);
@@ -979,7 +992,17 @@ function ProfileBuilderContent() {
                 certifications: Array.isArray(profileToEdit.preferences?.certifications)
                   ? profileToEdit.preferences.certifications
                   : [],
-                services: Array.isArray(profileToEdit.services) ? profileToEdit.services : []
+                services: Array.isArray(profileToEdit.services) && profileToEdit.services.length > 0
+                  ? profileToEdit.services
+                  : [{
+                      id: Date.now().toString(),
+                      title: '',
+                      description: '',
+                      pricing: '',
+                      currency: 'USD',
+                      category: '',
+                      showPublicly: true
+                    }]
               };
 
               setProfileData(mappedProfile);
@@ -1231,7 +1254,17 @@ function ProfileBuilderContent() {
             photos: prefs.photos || [],
             videos: prefs.videos || [],
             certifications: prefs.certifications || [],
-            services: prefs.services || []
+            services: (prefs.services && prefs.services.length > 0)
+              ? prefs.services
+              : [{
+                  id: Date.now().toString(),
+                  title: '',
+                  description: '',
+                  pricing: '',
+                  currency: 'USD',
+                  category: '',
+                  showPublicly: true
+                }]
           };
 
           console.log('🗺️ Mapped data:', mappedData);
@@ -1249,6 +1282,8 @@ function ProfileBuilderContent() {
         }
       } catch (error) {
         console.error('❌ Error fetching profile data:', error);
+      } finally {
+        setIsLoadingProfile(false);
       }
     };
 
@@ -1869,10 +1904,78 @@ function ProfileBuilderContent() {
                   </div>
                 </div>
 
-                <div className="p-4 sm:p-6 space-y-6">
-                  {/* Full Name */}
-                  <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Full Name</h3>
+                {isLoadingProfile ? (
+                  // Skeleton Loader
+                  <div className="p-4 sm:p-6 space-y-6">
+                    {/* Full Name Skeleton */}
+                    <div>
+                      <Skeleton variant="text" width={120} height={28} className="mb-3 sm:mb-4" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Skeleton variant="text" width={80} height={20} className="mb-2" />
+                          <Skeleton variant="rectangular" height={42} className="rounded-lg" />
+                        </div>
+                        <div>
+                          <Skeleton variant="text" width={80} height={20} className="mb-2" />
+                          <Skeleton variant="rectangular" height={42} className="rounded-lg" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email Addresses Skeleton */}
+                    <div>
+                      <Skeleton variant="text" width={150} height={28} className="mb-3 sm:mb-4" />
+                      <div className="space-y-4">
+                        <div>
+                          <Skeleton variant="text" width={100} height={20} className="mb-2" />
+                          <Skeleton variant="rectangular" height={42} className="rounded-lg" />
+                          <div className="flex justify-end mt-2">
+                            <Skeleton variant="text" width={120} height={20} />
+                          </div>
+                        </div>
+                        <div>
+                          <Skeleton variant="text" width={120} height={20} className="mb-2" />
+                          <Skeleton variant="rectangular" height={42} className="rounded-lg" />
+                          <div className="flex justify-end mt-2">
+                            <Skeleton variant="text" width={120} height={20} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Phone Numbers Skeleton */}
+                    <div>
+                      <Skeleton variant="text" width={140} height={28} className="mb-3 sm:mb-4" />
+                      <div className="space-y-4">
+                        <div>
+                          <Skeleton variant="text" width={100} height={20} className="mb-2" />
+                          <div className="flex gap-2">
+                            <Skeleton variant="rectangular" width={120} height={42} className="rounded-lg" />
+                            <Skeleton variant="rectangular" height={42} className="rounded-lg flex-1" />
+                          </div>
+                          <div className="flex justify-between mt-2">
+                            <Skeleton variant="text" width={180} height={20} />
+                            <Skeleton variant="text" width={120} height={20} />
+                          </div>
+                        </div>
+                        <div>
+                          <Skeleton variant="text" width={130} height={20} className="mb-2" />
+                          <div className="flex gap-2">
+                            <Skeleton variant="rectangular" width={120} height={42} className="rounded-lg" />
+                            <Skeleton variant="rectangular" height={42} className="rounded-lg flex-1" />
+                          </div>
+                          <div className="flex justify-end mt-2">
+                            <Skeleton variant="text" width={120} height={20} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 sm:p-6 space-y-6">
+                    {/* Full Name */}
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Full Name</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
@@ -2090,6 +2193,7 @@ function ProfileBuilderContent() {
                   </div>
 
                 </div>
+                )}
 
                 {/* Continue Button - Fixed Bottom */}
                 <div className="border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 rounded-b-lg">
@@ -2743,193 +2847,7 @@ function ProfileBuilderContent() {
                     </div>
 
                     <div className="space-y-4">
-                        {/* Show at least one empty form if no services exist */}
-                        {profileData.services.length === 0 ? (
-                          <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-gray-900">Service 1</h4>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {/* Service Title */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Service Title *
-                                </label>
-                                <input
-                                  type="text"
-                                  value=""
-                                  onChange={(e) => {
-                                    const newService = {
-                                      id: Date.now().toString(),
-                                      title: e.target.value,
-                                      description: '',
-                                      pricing: '',
-                                      currency: defaultCurrency,
-                                      category: '',
-                                      showPublicly: true
-                                    };
-                                    setProfileData({ ...profileData, services: [newService] });
-                                  }}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                  placeholder="e.g., Web Development"
-                                />
-                              </div>
-
-                              {/* Service Category */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Category / Type *
-                                </label>
-                                <input
-                                  type="text"
-                                  value=""
-                                  onChange={(e) => {
-                                    if (profileData.services.length === 0) {
-                                      const newService = {
-                                        id: Date.now().toString(),
-                                        title: '',
-                                        description: '',
-                                        pricing: '',
-                                        currency: defaultCurrency,
-                                        category: e.target.value,
-                                        showPublicly: true
-                                      };
-                                      setProfileData({ ...profileData, services: [newService] });
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                  placeholder="e.g., Consulting, Development, Design"
-                                />
-                              </div>
-
-                              {/* Service Pricing & Currency */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                {/* Currency Dropdown */}
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Currency *
-                                  </label>
-                                  <select
-                                    value={defaultCurrency}
-                                    onChange={(e) => {
-                                      if (profileData.services.length === 0) {
-                                        const newService = {
-                                          id: Date.now().toString(),
-                                          title: '',
-                                          description: '',
-                                          pricing: '',
-                                          currency: e.target.value,
-                                          category: '',
-                                          showPublicly: true
-                                        };
-                                        setProfileData({ ...profileData, services: [newService] });
-                                      }
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white"
-                                  >
-                                    {CURRENCIES.map(curr => (
-                                      <option key={curr.code} value={curr.code}>
-                                        {curr.symbol} {curr.code} - {curr.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                {/* Pricing Input */}
-                                <div className="sm:col-span-2">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Pricing *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value=""
-                                    onChange={(e) => {
-                                      // Only allow numbers and specific characters for pricing (/, -, space)
-                                      const value = e.target.value;
-                                      const allowedPattern = /^[0-9\/\-\s]*$/;
-                                      if ((allowedPattern.test(value) || value === '') && profileData.services.length === 0) {
-                                        const newService = {
-                                          id: Date.now().toString(),
-                                          title: '',
-                                          description: '',
-                                          pricing: value,
-                                          currency: defaultCurrency,
-                                          category: '',
-                                          showPublicly: true
-                                        };
-                                        setProfileData({ ...profileData, services: [newService] });
-                                      }
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                    placeholder={`e.g., 100(per hour)`}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Show Publicly Toggle */}
-                              <div className="flex items-end">
-                                <div className="flex items-center gap-2">
-                                  <label className="flex items-center cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={true}
-                                      onChange={(e) => {
-                                        if (profileData.services.length === 0) {
-                                          const newService = {
-                                            id: Date.now().toString(),
-                                            title: '',
-                                            description: '',
-                                            pricing: '',
-                                            currency: defaultCurrency,
-                                            category: '',
-                                            showPublicly: e.target.checked
-                                          };
-                                          setProfileData({ ...profileData, services: [newService] });
-                                        }
-                                      }}
-                                      className="sr-only peer"
-                                    />
-                                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                  </label>
-                                  <span className="text-sm text-gray-700">Show on profile</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Service Description */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Description
-                                <span className="text-xs text-gray-500 ml-2">
-                                  (0/250 characters)
-                                </span>
-                              </label>
-                              <textarea
-                                value=""
-                                onChange={(e) => {
-                                  if (profileData.services.length === 0 && e.target.value.length <= 250) {
-                                    const newService = {
-                                      id: Date.now().toString(),
-                                      title: '',
-                                      description: e.target.value,
-                                      pricing: '',
-                                      currency: defaultCurrency,
-                                      category: '',
-                                      showPublicly: true
-                                    };
-                                    setProfileData({ ...profileData, services: [newService] });
-                                  }
-                                }}
-                                maxLength={250}
-                                rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
-                                placeholder="Describe your service..."
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          profileData.services.map((service, index) => (
+                        {profileData.services.map((service, index) => (
                           <div key={service.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium text-gray-900">Service {index + 1}</h4>
@@ -3106,25 +3024,24 @@ function ProfileBuilderContent() {
                               />
                             </div>
                           </div>
-                        ))
-                        )}
+                        ))}
                       </div>
                   </div>
+                </div>
 
-                  {/* Continue Button - Fixed Bottom */}
-                  <div className="border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 rounded-b-lg">
-                    <div className="flex justify-center sm:justify-end">
-                      <button
-                        onClick={() => handleContinue('social')}
-                        className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors flex items-center justify-center gap-2 shadow-lg"
-                        style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
-                      >
-                        Continue
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    </div>
+                {/* Continue Button - Fixed Bottom */}
+                <div className="border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 rounded-b-lg">
+                  <div className="flex justify-center sm:justify-end">
+                    <button
+                      onClick={() => handleContinue('social')}
+                      className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors flex items-center justify-center gap-2 shadow-lg"
+                      style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+                    >
+                      Continue
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
