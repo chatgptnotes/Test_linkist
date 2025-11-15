@@ -24,6 +24,9 @@ export default function LoginPage() {
   const [countryCode, setCountryCode] = useState('+971'); // Default to UAE
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  // Debounce timer for input type detection
+  let detectionTimerRef: NodeJS.Timeout | null = null;
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const returnUrlParam = urlParams.get('returnUrl');
@@ -134,8 +137,8 @@ export default function LoginPage() {
                 Email or Phone Number
               </label>
               <div className="mt-1">
-                {inputType === 'phone' ? (
-                  <div className="flex">
+                <div className="flex">
+                  {inputType === 'phone' && (
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
@@ -152,39 +155,33 @@ export default function LoginPage() {
                       <option value="+965">🇰🇼 +965</option>
                       <option value="+973">🇧🇭 +973</option>
                     </select>
-                    <input
-                      id="emailOrPhone"
-                      name="emailOrPhone"
-                      type="tel"
-                      autoComplete="tel"
-                      required
-                      value={formData.emailOrPhone}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFormData({ ...formData, emailOrPhone: value });
-                        detectInputType(value);
-                      }}
-                      className="appearance-none block w-full px-3 py-2 border border-l-0 border-gray-300 rounded-r-md placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                ) : (
+                  )}
                   <input
+                    key="emailOrPhone-stable"
                     id="emailOrPhone"
                     name="emailOrPhone"
-                    type="text"
-                    autoComplete="email tel"
+                    type={inputType === 'phone' ? 'tel' : 'text'}
+                    autoComplete={inputType === 'phone' ? 'tel' : 'email tel'}
                     required
                     value={formData.emailOrPhone}
                     onChange={(e) => {
                       const value = e.target.value;
                       setFormData({ ...formData, emailOrPhone: value });
-                      detectInputType(value);
+
+                      // Debounced input type detection
+                      if (detectionTimerRef) {
+                        clearTimeout(detectionTimerRef);
+                      }
+                      detectionTimerRef = setTimeout(() => {
+                        detectInputType(value);
+                      }, 300);
                     }}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm"
-                    placeholder="Enter your email or phone number"
+                    className={`appearance-none block w-full px-3 py-2 border border-gray-300 ${
+                      inputType === 'phone' ? 'border-l-0 rounded-r-md' : 'rounded-md'
+                    } placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm`}
+                    placeholder={inputType === 'phone' ? 'Enter phone number' : 'Enter your email or phone number'}
                   />
-                )}
+                </div>
               </div>
               <p className="mt-2 text-sm text-gray-500">
                 We'll send a verification code to your registered {inputType === 'email' ? 'email' : 'phone'}
