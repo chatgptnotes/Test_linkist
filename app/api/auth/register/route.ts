@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
 import { rateLimitMiddleware, RateLimits } from '@/lib/rate-limit';
-import { SupabaseUserStore } from '@/lib/supabase-user-store';
-import { linkProfileToUser } from '@/lib/profile-users-helpers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+/**
+ * Registration endpoint - Validates user data and triggers OTP flow
+ * NOTE: This endpoint does NOT create the user. Users are only created after OTP verification.
+ */
 export async function POST(request: NextRequest) {
   // Apply rate limiting
   const rateLimitResponse = rateLimitMiddleware(request, RateLimits.auth);
@@ -17,9 +18,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { firstName, lastName, email, phone, password } = body;
+    const { firstName, lastName, email, phone } = body;
 
-    console.log('📝 Registration attempt:', { firstName, lastName, email, phone });
+    console.log('📝 Registration validation:', { firstName, lastName, email, phone });
 
     // Validate required fields
     if (!email) {
@@ -36,8 +37,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Password is optional (system uses OTP-based authentication)
-
     const normalizedEmail = email.toLowerCase();
 
     // Create Supabase client with service role key for admin operations
@@ -46,26 +45,43 @@ export async function POST(request: NextRequest) {
     // Check if user already exists with this email
     const { data: existingEmailUser } = await supabase
       .from('users')
-      .select('id')
+      .select('id, status')
       .eq('email', normalizedEmail)
       .single();
 
     if (existingEmailUser) {
-      return NextResponse.json(
-        { success: false, error: 'This email is already registered. Please use a different email or sign in.' },
-        { status: 409 }
-      );
+      // If user exists and is active, tell them to sign in
+      if (existingEmailUser.status === 'active') {
+        return NextResponse.json(
+          { success: false, error: 'This email is already registered. Please sign in instead.' },
+          { status: 409 }
+        );
+      }
+      // If user exists but is pending, they need to complete OTP verification
+      if (existingEmailUser.status === 'pending') {
+        return NextResponse.json(
+          { success: false, error: 'Registration pending. Please complete OTP verification.' },
+          { status: 409 }
+        );
+      }
+      // If suspended
+      if (existingEmailUser.status === 'suspended') {
+        return NextResponse.json(
+          { success: false, error: 'This account has been suspended. Please contact support.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if user already exists with this phone number (if provided)
     if (phone && phone.trim() !== '') {
       const { data: existingPhoneUser } = await supabase
         .from('users')
-        .select('id')
+        .select('id, status')
         .eq('phone_number', phone)
         .single();
 
-      if (existingPhoneUser) {
+      if (existingPhoneUser && existingPhoneUser.status === 'active') {
         return NextResponse.json(
           { success: false, error: 'This mobile number is already registered. Please use a different number or sign in.' },
           { status: 409 }
@@ -94,101 +110,26 @@ export async function POST(request: NextRequest) {
       isFoundingMember = now >= launchDate && now <= endDate;
     }
 
-    // Get founding member plan from request body or localStorage (passed from founding member page)
+    // Get founding member plan from request body
     const foundingMemberPlan = body.foundingMemberPlan || null;
 
-    // Insert new user (no password_hash - system uses OTP-based authentication)
-    const { data: newUser, error: insertError } = await supabase
-      .from('users')
-      .insert({
-        email: normalizedEmail,
-        first_name: firstName,
-        last_name: lastName,
-        phone_number: phone || null,
-        role: 'user',
-        email_verified: false,
-        mobile_verified: false,
-        is_founding_member: isFoundingMember,
-        founding_member_since: isFoundingMember ? now.toISOString() : null,
-        founding_member_plan: isFoundingMember && foundingMemberPlan ? foundingMemberPlan : null,
-      })
-      .select()
-      .single();
+    console.log('✅ Registration validation passed:', normalizedEmail);
 
-    if (insertError) {
-      console.error('❌ Insert error:', insertError);
-
-      // Check for specific database constraint violations
-      if (insertError.code === '23505') { // Unique constraint violation
-        if (insertError.message?.includes('email')) {
-          return NextResponse.json(
-            { success: false, error: 'This email is already registered. Please use a different email or sign in.' },
-            { status: 409 }
-          );
-        }
-        if (insertError.message?.includes('phone')) {
-          return NextResponse.json(
-            { success: false, error: 'This mobile number is already registered. Please use a different number or sign in.' },
-            { status: 409 }
-          );
-        }
-      }
-
-      // Generic error for other cases
-      return NextResponse.json(
-        { success: false, error: 'Failed to create account. Please try again.' },
-        { status: 500 }
-      );
-    }
-
-    console.log('✅ User registered successfully:', normalizedEmail);
-
-    // Create profile for the new user and link via profile_users
-    try {
-      console.log('📝 Creating profile for user:', newUser.id);
-      const profile = await SupabaseUserStore.createOrUpdateProfile(newUser.id, {
-        email: normalizedEmail,
-        first_name: firstName,
-        last_name: lastName,
-        phone: phone || null,
-      });
-      console.log('✅ Profile created successfully:', profile.id);
-
-      // Link profile to user via profile_users junction table
-      try {
-        await linkProfileToUser(profile.id, newUser.id);
-        console.log('✅ Profile linked to user via profile_users');
-      } catch (linkError) {
-        console.error('⚠️ Profile linking failed (may already be linked):', linkError);
-        // Non-critical - trigger might have already linked it
-      }
-    } catch (profileError) {
-      console.error('⚠️ Profile creation failed (non-critical):', profileError);
-      // Don't fail registration if profile creation fails
-      // User can still login and profile will be created later
-    }
-
-    // Return success with user data and set userEmail cookie for OTP verification
+    // Return success - user data will be stored in OTP table temp_user_data
+    // Actual user creation happens in verify-otp endpoint after OTP verification
     const response = NextResponse.json({
       success: true,
-      message: 'Account created successfully',
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        firstName: newUser.first_name,
-        lastName: newUser.last_name,
-        phone: newUser.phone_number,
-        role: newUser.role,
-      }
-    });
-
-    // Set userEmail cookie for OTP verification to enable auto-login
-    response.cookies.set('userEmail', newUser.email, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 30, // 30 minutes (enough time to verify OTP)
-      path: '/'
+      message: 'Validation successful. Please verify your email with OTP.',
+      validatedData: {
+        email: normalizedEmail,
+        firstName,
+        lastName,
+        phone: phone || null,
+        isFoundingMember,
+        foundingMemberPlan,
+        foundingMemberSince: isFoundingMember ? now.toISOString() : null,
+      },
+      nextStep: 'send-otp'
     });
 
     return response;

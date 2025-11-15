@@ -37,6 +37,7 @@ export interface AuthUser {
   id: string
   email: string
   role: 'user' | 'admin'
+  status?: 'pending' | 'active' | 'suspended'
   email_verified?: boolean
   mobile_verified?: boolean
   created_at?: string
@@ -111,31 +112,50 @@ export async function getAuthenticatedUser(request: NextRequest): Promise<AuthSe
       const sessionData = await SessionStore.get(customSessionId)
 
       if (sessionData) {
-        // Fetch user details from database to get first_name and last_name
+        // Fetch user details from database to get first_name, last_name, and status
         let firstName: string | null = null
         let lastName: string | null = null
+        let userStatus: 'pending' | 'active' | 'suspended' = 'active'
 
         try {
           const { supabase: dbClient } = createMiddlewareClient(request)
           const { data: userData, error: userError } = await dbClient
             .from('users')
-            .select('first_name, last_name')
+            .select('first_name, last_name, status')
             .eq('id', sessionData.userId)
             .maybeSingle() // Use maybeSingle to avoid errors if user not found
 
           if (!userError && userData) {
             firstName = userData.first_name || null
             lastName = userData.last_name || null
+            userStatus = userData.status || 'active'
+
+            // Check if user is suspended or pending - reject session
+            if (userStatus === 'suspended') {
+              console.warn('Suspended user attempted to access:', sessionData.email)
+              return { user: null, isAuthenticated: false, isAdmin: false }
+            }
+
+            if (userStatus === 'pending') {
+              console.warn('Pending user attempted to access:', sessionData.email)
+              return { user: null, isAuthenticated: false, isAdmin: false }
+            }
           }
         } catch (error) {
           // Silently fail user data fetch - not critical for auth
           console.warn('Failed to fetch user details:', error)
         }
 
+        // Only allow active users to authenticate
+        if (userStatus !== 'active') {
+          return { user: null, isAuthenticated: false, isAdmin: false }
+        }
+
         const sessionUser: AuthUser = {
           id: sessionData.userId,
           email: sessionData.email,
           role: sessionData.role,
+          status: userStatus,
           email_verified: true,
           created_at: new Date(sessionData.createdAt).toISOString(),
           first_name: firstName,

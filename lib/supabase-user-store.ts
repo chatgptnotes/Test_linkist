@@ -18,6 +18,9 @@ const createAdminClient = () => {
   })
 }
 
+// User status type
+export type UserStatus = 'pending' | 'active' | 'suspended';
+
 // User interface matching database schema
 export interface SupabaseUser {
   id: string
@@ -28,6 +31,7 @@ export interface SupabaseUser {
   country: string | null
   country_code: string | null
   role: 'user' | 'admin'
+  status: UserStatus
   email_verified: boolean
   mobile_verified: boolean
   created_at: string
@@ -43,6 +47,7 @@ export interface CreateUserInput {
   country?: string
   country_code?: string
   role?: 'user' | 'admin'
+  status?: UserStatus
   email_verified?: boolean
   mobile_verified?: boolean
 }
@@ -84,6 +89,7 @@ export const SupabaseUserStore = {
       country: input.country || null,
       country_code: input.country_code || null,
       role: input.role || 'user',
+      status: input.status || 'pending',
       email_verified: input.email_verified || false,
       mobile_verified: input.mobile_verified || false,
     }
@@ -308,5 +314,93 @@ export const SupabaseUserStore = {
 
     console.log('✅ [SupabaseUserStore.createOrUpdateProfile] Profile created successfully:', data.id)
     return data
+  },
+
+  /**
+   * Update user status
+   */
+  updateStatus: async (
+    userId: string,
+    status: UserStatus
+  ): Promise<SupabaseUser | null> => {
+    console.log('👤 [SupabaseUserStore.updateStatus] Updating user status:', userId, 'to', status);
+
+    const supabase = createAdminClient()
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      console.error('❌ [SupabaseUserStore.updateStatus] Error:', error)
+      throw new Error(`Failed to update status: ${error.message}`)
+    }
+
+    console.log('✅ [SupabaseUserStore.updateStatus] Status updated successfully');
+    return data
+  },
+
+  /**
+   * Activate a user (set status to 'active' and mark as verified)
+   * Used after successful OTP verification
+   */
+  activateUser: async (
+    userId: string,
+    verificationType: 'email' | 'mobile'
+  ): Promise<SupabaseUser | null> => {
+    console.log('👤 [SupabaseUserStore.activateUser] Activating user:', userId, 'via', verificationType);
+
+    const supabase = createAdminClient()
+
+    const updates: any = {
+      status: 'active' as UserStatus,
+      updated_at: new Date().toISOString()
+    }
+
+    // Also mark the appropriate field as verified
+    if (verificationType === 'email') {
+      updates.email_verified = true
+    } else {
+      updates.mobile_verified = true
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      console.error('❌ [SupabaseUserStore.activateUser] Error:', error)
+      throw new Error(`Failed to activate user: ${error.message}`)
+    }
+
+    console.log('✅ [SupabaseUserStore.activateUser] User activated successfully');
+    return data
+  },
+
+  /**
+   * Suspend a user account
+   */
+  suspendUser: async (userId: string): Promise<SupabaseUser | null> => {
+    console.log('👤 [SupabaseUserStore.suspendUser] Suspending user:', userId);
+    return SupabaseUserStore.updateStatus(userId, 'suspended')
+  },
+
+  /**
+   * Reactivate a suspended user
+   */
+  reactivateUser: async (userId: string): Promise<SupabaseUser | null> => {
+    console.log('👤 [SupabaseUserStore.reactivateUser] Reactivating user:', userId);
+    return SupabaseUserStore.updateStatus(userId, 'active')
   },
 }

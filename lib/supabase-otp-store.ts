@@ -1,6 +1,13 @@
 // Supabase-powered OTP management system
 import { createClient } from '@supabase/supabase-js';
 
+export interface TempUserData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+}
+
 export interface EmailOTPRecord {
   id?: string;
   user_id?: string | null;
@@ -9,6 +16,7 @@ export interface EmailOTPRecord {
   expires_at: string;
   verified: boolean;
   created_at?: string;
+  temp_user_data?: TempUserData | null;
 }
 
 export interface MobileOTPRecord {
@@ -19,6 +27,7 @@ export interface MobileOTPRecord {
   expires_at: string;
   verified: boolean;
   created_at?: string;
+  temp_user_data?: TempUserData | null;
 }
 
 // Get Supabase client with service role key for server operations
@@ -56,6 +65,7 @@ export const SupabaseEmailOTPStore = {
           otp: record.otp,
           expires_at: record.expires_at,
           verified: record.verified,
+          temp_user_data: record.temp_user_data || null,
         }]);
 
       if (error) {
@@ -187,6 +197,7 @@ export const SupabaseMobileOTPStore = {
           otp: record.otp,
           expires_at: record.expires_at,
           verified: record.verified,
+          temp_user_data: record.temp_user_data || null,
         }]);
 
       if (error) {

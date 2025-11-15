@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
           });
 
         if (verificationCheck.status === 'approved') {
+          console.log('✅ [verify-mobile-otp] Twilio verification approved');
+
           // Update user's mobile_verified status in database
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
           let userEmail = request.cookies.get('userEmail')?.value;
@@ -78,7 +80,9 @@ export async function POST(request: NextRequest) {
           }
 
           if (user) {
-            // Update mobile_verified status
+            // Existing user - Update mobile_verified status
+            console.log('✅ [verify-mobile-otp] Twilio: Existing user found, updating mobile_verified status');
+
             await supabase
               .from('users')
               .update({ mobile_verified: true, phone_number: mobile })
@@ -104,6 +108,74 @@ export async function POST(request: NextRequest) {
             });
 
             return response;
+          }
+
+          // New user - Check for registration data in temp_user_data
+          console.log('👤 [verify-mobile-otp] Twilio: User not found, checking for registration data');
+
+          const mobileOTPRecord = await SupabaseMobileOTPStore.get(mobile);
+
+          console.log('📋 [verify-mobile-otp] Twilio OTP record:', {
+            exists: !!mobileOTPRecord,
+            has_temp_user_data: !!mobileOTPRecord?.temp_user_data,
+            temp_user_data: mobileOTPRecord?.temp_user_data
+          });
+
+          if (mobileOTPRecord && mobileOTPRecord.temp_user_data) {
+            console.log('🆕 [verify-mobile-otp] Twilio: Creating new user account for mobile:', mobile);
+
+            try {
+              const { SupabaseUserStore } = await import('@/lib/supabase-user-store');
+
+              // Create the user account with pending status
+              const newUser = await SupabaseUserStore.upsertByEmail({
+                email: mobileOTPRecord.temp_user_data.email || `${Date.now()}@temp-mobile-user.com`,
+                first_name: mobileOTPRecord.temp_user_data.firstName,
+                last_name: mobileOTPRecord.temp_user_data.lastName,
+                phone_number: mobile,
+                role: 'user',
+                status: 'pending',
+                email_verified: false,
+                mobile_verified: false,
+              });
+
+              console.log('✅ [verify-mobile-otp] Twilio: New user created with pending status:', newUser.id);
+
+              // Activate user now that OTP is verified
+              const activatedUser = await SupabaseUserStore.activateUser(newUser.id, 'mobile');
+              console.log('✅ [verify-mobile-otp] Twilio: User activated successfully with mobile verification');
+
+              // Create session
+              const sessionId = await SessionStore.create(activatedUser.id, activatedUser.email, activatedUser.role);
+              console.log('✅ [verify-mobile-otp] Twilio: Session created for new user:', sessionId);
+
+              // Clean up OTP record
+              await SupabaseMobileOTPStore.delete(mobile);
+
+              // Set session cookie
+              const response = NextResponse.json({
+                success: true,
+                message: 'Mobile number verified successfully',
+                verified: true,
+                newUser: true
+              });
+
+              response.cookies.set('session', sessionId, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 60 * 60 * 24 * 7, // 7 days
+                path: '/'
+              });
+
+              return response;
+            } catch (createError) {
+              console.error('❌ [verify-mobile-otp] Twilio: Failed to create user for mobile:', createError);
+              return NextResponse.json(
+                { success: false, error: 'Failed to create user account. Please try again.' },
+                { status: 500 }
+              );
+            }
           }
 
           return NextResponse.json({
@@ -223,7 +295,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (user) {
-      // Update mobile_verified status
+      // Existing user - Update mobile_verified status
+      console.log('✅ [verify-mobile-otp] Existing user found, updating mobile_verified status');
+
       await supabase
         .from('users')
         .update({ mobile_verified: true, phone_number: mobile })
@@ -251,11 +325,97 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Mobile number verified successfully',
-      verified: true
+    // New user - Check for registration data in temp_user_data
+    console.log('👤 [verify-mobile-otp] User not found, checking for registration data');
+
+    const mobileOTPRecord = await SupabaseMobileOTPStore.get(mobile);
+
+    console.log('📋 [verify-mobile-otp] OTP record:', {
+      exists: !!mobileOTPRecord,
+      has_temp_user_data: !!mobileOTPRecord?.temp_user_data,
+      temp_user_data: mobileOTPRecord?.temp_user_data
     });
+
+    if (mobileOTPRecord && mobileOTPRecord.temp_user_data) {
+      console.log('🆕 [verify-mobile-otp] Creating new user account for mobile:', mobile);
+
+      try {
+        const { SupabaseUserStore } = await import('@/lib/supabase-user-store');
+
+        // Create the user account with pending status
+        const newUser = await SupabaseUserStore.upsertByEmail({
+          email: mobileOTPRecord.temp_user_data.email || `${Date.now()}@temp-mobile-user.com`,
+          first_name: mobileOTPRecord.temp_user_data.firstName,
+          last_name: mobileOTPRecord.temp_user_data.lastName,
+          phone_number: mobile,
+          role: 'user',
+          status: 'pending',
+          email_verified: false,
+          mobile_verified: false,
+        });
+
+        console.log('✅ [verify-mobile-otp] New user created with pending status:', newUser.id);
+
+        // Activate user now that OTP is verified
+        const activatedUser = await SupabaseUserStore.activateUser(newUser.id, 'mobile');
+        console.log('✅ [verify-mobile-otp] User activated successfully with mobile verification');
+
+        // Create session
+        const sessionId = await SessionStore.create(activatedUser.id, activatedUser.email, activatedUser.role);
+        console.log('✅ [verify-mobile-otp] Session created for new user:', sessionId);
+
+        // Clean up OTP record
+        await SupabaseMobileOTPStore.delete(mobile);
+
+        // Set session cookie
+        const response = NextResponse.json({
+          success: true,
+          message: 'Mobile number verified successfully',
+          verified: true,
+          newUser: true
+        });
+
+        response.cookies.set('session', sessionId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+          path: '/'
+        });
+
+        return response;
+      } catch (createError) {
+        console.error('❌ [verify-mobile-otp] Failed to create user for mobile:', createError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to create user account. Please try again.' },
+          { status: 500 }
+        );
+      }
+    } else {
+      console.error('❌ [verify-mobile-otp] User not found and no registration data available');
+      console.error('❌ [verify-mobile-otp] OTP record exists:', !!mobileOTPRecord);
+      console.error('❌ [verify-mobile-otp] temp_user_data is null:', mobileOTPRecord && !mobileOTPRecord.temp_user_data);
+
+      if (mobileOTPRecord && !mobileOTPRecord.temp_user_data) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Registration data not found. This may be because:\n1. The registration data was not saved during signup\n2. You are trying to login instead of register\n\nPlease try registering again.',
+            debug: {
+              otp_record_exists: true,
+              temp_user_data_missing: true,
+              solution: 'Please start registration process again'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json(
+        { success: false, error: 'User account not found. Please register first.' },
+        { status: 404 }
+      );
+    }
 
   } catch (error) {
     console.error('Error verifying mobile OTP:', error);
