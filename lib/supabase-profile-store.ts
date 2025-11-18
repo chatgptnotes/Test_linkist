@@ -123,19 +123,49 @@ export interface ProfileInput {
 
 export const SupabaseProfileStore = {
   /**
-   * Create a new profile or update existing profile by email
+   * Create a new profile or update existing profile by user_id
+   * @param input - Profile data to save
+   * @param userId - Authenticated user ID (required)
+   * @param existingProfileId - Optional existing profile ID to update
    */
-  upsertByEmail: async (input: ProfileInput): Promise<SupabaseProfile> => {
+  upsertByEmail: async (input: ProfileInput, userId: string, existingProfileId?: string): Promise<SupabaseProfile> => {
     const supabase = createAdminClient()
 
-    console.log('🔍 [SupabaseProfileStore] Upserting profile for email:', input.email)
+    console.log('🔍 [SupabaseProfileStore] Upserting profile for user:', userId, 'existingProfileId:', existingProfileId)
 
-    // First, try to get existing profile
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', input.email)
-      .single()
+    // If existingProfileId is provided, fetch and update that specific profile
+    // Otherwise, query via profile_users junction table to find user's profile
+    let existingProfile: any = null
+    let fetchError: any = null
+
+    if (existingProfileId) {
+      // Fetch specific profile and verify it belongs to this user
+      const { data: profileResult, error } = await supabase
+        .from('profile_users')
+        .select(`
+          profile_id,
+          profiles (*)
+        `)
+        .eq('user_id', userId)
+        .eq('profile_id', existingProfileId)
+        .maybeSingle()
+
+      existingProfile = profileResult?.profiles
+      fetchError = error
+    } else {
+      // Try to find any existing profile for this user
+      const { data: profileResult, error } = await supabase
+        .from('profile_users')
+        .select(`
+          profile_id,
+          profiles (*)
+        `)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      existingProfile = profileResult?.profiles
+      fetchError = error
+    }
 
     if (existingProfile && !fetchError) {
       // Update existing profile
@@ -322,17 +352,22 @@ export const SupabaseProfileStore = {
 
   /**
    * Get profile by email
+   * WARNING: Email is NOT unique in the database. This function may return
+   * unpredictable results if multiple profiles exist with the same email.
+   * Use getByUserId() or query via profile_users junction table instead.
+   * @deprecated Use user_id based queries instead
    */
   getByEmail: async (email: string): Promise<SupabaseProfile | null> => {
     const supabase = createAdminClient()
 
+    console.log('⚠️ [SupabaseProfileStore] WARNING: Using deprecated getByEmail() - email is not unique')
     console.log('🔍 [SupabaseProfileStore] Fetching profile for email:', email)
 
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('email', email)
-      .single()
+      .maybeSingle() // Changed from .single() to avoid errors with duplicates
 
     if (error) {
       if (error.code === 'PGRST116') {
