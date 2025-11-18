@@ -552,13 +552,15 @@ function ProfileBuilderContent() {
                           </a>
                         )}
                         {profileData.phone && (
-                          <a
-                            href={`tel:${profileData.phone}`}
+                          <button
+                            type="button"
+                            onClick={() => { window.location.href = `tel:${profileData.phone}`; }}
                             className="flex items-center justify-center w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition"
+                            aria-label={`Call ${((profileData.firstName || profileData.lastName) ? `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() : 'contact')}`}
                           >
                             <Phone className="h-4 w-4 mr-2" />
                             Call
-                          </a>
+                          </button>
                         )}
                         {profileData.website && (
                           <a

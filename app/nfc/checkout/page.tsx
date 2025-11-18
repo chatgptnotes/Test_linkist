@@ -180,6 +180,26 @@ export default function CheckoutPage() {
   useEffect(() => {
     console.log('Checkout: Loading configuration data...');
 
+    // Check founding member status immediately on page load
+    const checkFoundingMemberEarly = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const isFoundingMember = data.user?.is_founding_member || false;
+          setUserIsFoundingMember(isFoundingMember);
+          console.log('✅ Checkout: Founding member status loaded early:', isFoundingMember);
+        }
+      } catch (error) {
+        console.log('⚠️ Checkout: Could not check founding member status early');
+      }
+    };
+
+    checkFoundingMemberEarly();
+
     // Restore voucher state from localStorage if it exists
     const savedVoucherState = localStorage.getItem('checkoutVoucherState');
     if (savedVoucherState) {

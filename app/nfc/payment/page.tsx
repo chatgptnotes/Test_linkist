@@ -88,9 +88,15 @@ export default function NFCPaymentPage() {
   const [isFoundingMember, setIsFoundingMember] = useState(false);
 
   useEffect(() => {
-    // Get order data from localStorage (set by checkout page)
-    const storedOrderData = localStorage.getItem('pendingOrder');
-    if (storedOrderData) {
+    const initializePaymentPage = async () => {
+      // Get order data from localStorage (set by checkout page)
+      const storedOrderData = localStorage.getItem('pendingOrder');
+      if (!storedOrderData) {
+        console.log('ℹ️ No pending order found, redirecting to checkout');
+        router.push('/nfc/checkout');
+        return;
+      }
+
       const data = JSON.parse(storedOrderData);
 
       // Check if order has orderId (created during checkout)
@@ -98,131 +104,127 @@ export default function NFCPaymentPage() {
         console.error('❌ No orderId found in pending order data');
         setHasOrderError(true);
         setOrderData(data); // Set data so page can display error properly
+        return;
+      }
+
+      setOrderData(data);
+      setCardHolder(''); // Keep cardholder name blank
+      setHasOrderError(false);
+
+      // Store original total before any discounts
+      if (data.pricing?.total) {
+        setOriginalTotal(data.pricing.total);
+      }
+
+      // STEP 1: Determine founding member status FIRST
+      let foundingMemberStatus = false;
+
+      if (typeof data.isFoundingMember === 'boolean') {
+        // Use status from order data
+        foundingMemberStatus = data.isFoundingMember;
+        console.log('✅ Using founding member status from order data:', foundingMemberStatus);
       } else {
-        setOrderData(data);
-        setCardHolder(''); // Keep cardholder name blank
-        setHasOrderError(false);
-
-        // Store original total before any discounts
-        if (data.pricing?.total) {
-          setOriginalTotal(data.pricing.total);
+        // Fallback: Check from API
+        console.log('⚠️ Founding member status not in order data, checking API...');
+        try {
+          const response = await fetch('/api/auth/me', {
+            credentials: 'include',
+            cache: 'no-store'
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            foundingMemberStatus = userData.user?.is_founding_member || false;
+            console.log('✅ Retrieved founding member status from API:', foundingMemberStatus);
+          }
+        } catch (error) {
+          console.log('⚠️ Could not check founding member status, assuming false');
+          foundingMemberStatus = false;
         }
+      }
 
-        // Auto-set and validate LINKISTFM voucher code
-        setVoucherCode('LINKISTFM');
+      // Set the founding member state
+      setIsFoundingMember(foundingMemberStatus);
 
-        // Load voucher from order data if present
-        if (data.pricing?.voucherCode) {
-          setVoucherDiscount(data.pricing.voucherDiscount || 0);
-          setVoucherValid(true);
-          setAppliedVoucherCode(data.pricing.voucherCode);
-          setVoucherAmount(data.pricing.voucherAmount || 120);
-        } else {
-          // Auto-validate LINKISTFM on first load
-          const autoApplyVoucher = async () => {
-            try {
-              // Calculate subtotal for validation
-              let subtotal = 0;
+      // STEP 2: Auto-set and validate LINKISTFM voucher code
+      setVoucherCode('LINKISTFM');
 
-              if (data?.cardConfig?.baseMaterial === 'digital') {
-                subtotal += data.pricing.digitalProfilePrice || 59;
-                // Check if founding member from order data
-                if (!data.isFoundingMember) {
-                  subtotal += data.pricing.subscriptionPrice || 120;
-                }
-              } else {
-                const materialPrice = data.pricing.materialPrice || 99;
-                const quantity = data?.cardConfig?.quantity || 1;
-                subtotal += materialPrice * quantity;
+      // Load voucher from order data if present
+      if (data.pricing?.voucherCode) {
+        setVoucherDiscount(data.pricing.voucherDiscount || 0);
+        setVoucherValid(true);
+        setAppliedVoucherCode(data.pricing.voucherCode);
+        setVoucherAmount(data.pricing.voucherAmount || 120);
+        console.log('✅ Loaded existing voucher from order data');
+      } else {
+        // STEP 3: Auto-validate LINKISTFM with correct founding member status
+        console.log('🎫 Auto-applying LINKISTFM voucher with founding member status:', foundingMemberStatus);
 
-                // App subscription
-                if (!data.isFoundingMember) {
-                  const appPrice = data.pricing.appSubscriptionPrice || 120;
-                  subtotal += appPrice * quantity;
-                }
-              }
+        try {
+          // Calculate subtotal for validation WITH correct founding member status
+          let subtotal = 0;
 
-              // Add tax
-              subtotal += data.pricing.taxAmount || 0;
-
-              const response = await fetch('/api/vouchers/validate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  code: 'LINKISTFM',
-                  orderAmount: subtotal,
-                  userEmail: data.email,
-                }),
-              });
-
-              if (response.ok) {
-                const voucherData = await response.json();
-                if (voucherData.valid && voucherData.voucher) {
-                  setVoucherType(voucherData.voucher.discount_type);
-                  setVoucherAmount(voucherData.voucher.discount_amount);
-                  const discountPercent = voucherData.voucher.discount_type === 'percentage'
-                    ? voucherData.voucher.discount_value
-                    : Math.round((voucherData.voucher.discount_amount / (subtotal || 1)) * 100);
-                  setVoucherDiscount(discountPercent);
-                  setVoucherValid(true);
-                  setAppliedVoucherCode('LINKISTFM');
-                  console.log('✅ LINKISTFM auto-applied on page load:', voucherData.voucher.discount_amount);
-                }
-              }
-            } catch (error) {
-              console.log('❌ Could not auto-apply LINKISTFM:', error);
+          if (data?.cardConfig?.baseMaterial === 'digital') {
+            subtotal += data.pricing.digitalProfilePrice || 59;
+            if (!foundingMemberStatus) {
+              subtotal += data.pricing.subscriptionPrice || 120;
             }
-          };
+          } else {
+            const materialPrice = data.pricing.materialPrice || 99;
+            const quantity = data?.cardConfig?.quantity || 1;
+            subtotal += materialPrice * quantity;
 
-          // Auto-apply immediately
-          autoApplyVoucher();
+            // App subscription - only add if NOT founding member
+            if (!foundingMemberStatus) {
+              const appPrice = data.pricing.appSubscriptionPrice || 120;
+              subtotal += appPrice * quantity;
+            }
+          }
+
+          // Add tax
+          subtotal += data.pricing.taxAmount || 0;
+
+          console.log('💰 Calculated subtotal for voucher validation:', subtotal, '(founding member:', foundingMemberStatus, ')');
+
+          const response = await fetch('/api/vouchers/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: 'LINKISTFM',
+              orderAmount: subtotal,
+              userEmail: data.email,
+            }),
+          });
+
+          if (response.ok) {
+            const voucherData = await response.json();
+            if (voucherData.valid && voucherData.voucher) {
+              setVoucherType(voucherData.voucher.discount_type);
+              setVoucherAmount(voucherData.voucher.discount_amount);
+              const discountPercent = voucherData.voucher.discount_type === 'percentage'
+                ? voucherData.voucher.discount_value
+                : Math.round((voucherData.voucher.discount_amount / (subtotal || 1)) * 100);
+              setVoucherDiscount(discountPercent);
+              setVoucherValid(true);
+              setAppliedVoucherCode('LINKISTFM');
+              console.log('✅ LINKISTFM auto-applied successfully! Discount:', voucherData.voucher.discount_amount);
+            } else {
+              console.log('❌ LINKISTFM validation failed:', voucherData.message);
+            }
+          } else {
+            const errorData = await response.json();
+            console.error('❌ Voucher validation API error:', errorData);
+          }
+        } catch (error) {
+          console.error('❌ Error auto-applying LINKISTFM:', error);
         }
-      }
-    } else {
-      // If no order data, redirect back to checkout
-      console.log('ℹ️ No pending order found, redirecting to checkout');
-      router.push('/nfc/checkout');
-    }
-  }, [router]);
-
-  // Check if user is a founding member and auto-apply LINKISTFM
-  useEffect(() => {
-    const checkFoundingMember = async () => {
-      // First check if founding member flag exists in order data (from checkout)
-      if (orderData && typeof orderData.isFoundingMember === 'boolean') {
-        console.log('Using founding member status from order data:', orderData.isFoundingMember);
-        setIsFoundingMember(orderData.isFoundingMember);
-        return; // Exit early, no need to call API (voucher already auto-applied in first useEffect)
-      }
-
-      // Fallback: Try to check from API if not in order data
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include',
-          cache: 'no-store'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const isFounding = data.user?.is_founding_member || false;
-          setIsFoundingMember(isFounding);
-          // Voucher auto-apply already handled in first useEffect
-        } else if (response.status === 401) {
-          // Session expired - treat as normal user
-          console.log('Session expired - treating as normal user');
-          setIsFoundingMember(false);
-        }
-      } catch (error) {
-        // Network error - gracefully degrade to normal user
-        console.log('Could not check founding member status - treating as normal user');
-        setIsFoundingMember(false);
       }
     };
 
-    if (orderData) {
-      checkFoundingMember();
-    }
-  }, [orderData]);
+    initializePaymentPage();
+  }, [router]);
+
+  // NOTE: Founding member check and voucher auto-apply are now handled
+  // together in the initialization useEffect above to prevent race conditions
 
   // Generate QR code when UPI QR is shown
   useEffect(() => {

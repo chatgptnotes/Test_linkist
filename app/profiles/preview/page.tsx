@@ -540,9 +540,14 @@ export default function ProfilePreviewPage() {
                     {profileData.showMobilePublicly && profileData.mobileNumber && (
                       <div className="flex items-center gap-3">
                         <Phone className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                        <a href={`tel:${profileData.mobileNumber}`} className="text-sm text-gray-700 hover:text-blue-600">
+                        <button
+                          type="button"
+                          onClick={() => { window.location.href = `tel:${profileData.mobileNumber}`; }}
+                          className="text-sm text-gray-700 hover:text-blue-600"
+                          aria-label={`Call ${profileData.firstName ?? profileData.lastName ?? 'contact'}`}
+                        >
                           {profileData.mobileNumber}
-                        </a>
+                        </button>
                       </div>
                     )}
                     {profileData.showWhatsappPublicly && profileData.whatsappNumber && (

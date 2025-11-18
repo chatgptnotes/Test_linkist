@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use database OTP only if Twilio not configured (not based on NODE_ENV)
-    const useDatabaseOTP = !accountSid || !authToken || !verifyServiceSid;
+  // Use database OTP if hardcoded testing OTP is enabled or Twilio not configured
+  const useDatabaseOTP = (process.env.USE_HARDCODED_OTP === 'true') || !accountSid || !authToken || !verifyServiceSid;
 
     if (!useDatabaseOTP) {
       try {
@@ -171,10 +171,12 @@ export async function POST(request: NextRequest) {
               return response;
             } catch (createError) {
               console.error('❌ [verify-mobile-otp] Twilio: Failed to create user for mobile:', createError);
-              return NextResponse.json(
-                { success: false, error: 'Failed to create user account. Please try again.' },
-                { status: 500 }
-              );
+              // Return more helpful debug info in development to assist troubleshooting
+              const payload: any = { success: false, error: 'Failed to create user account. Please try again.' };
+              if (process.env.NODE_ENV !== 'production' && createError instanceof Error) {
+                payload.debug = { message: createError.message };
+              }
+              return NextResponse.json(payload, { status: 500 });
             }
           }
 
@@ -386,10 +388,11 @@ export async function POST(request: NextRequest) {
         return response;
       } catch (createError) {
         console.error('❌ [verify-mobile-otp] Failed to create user for mobile:', createError);
-        return NextResponse.json(
-          { success: false, error: 'Failed to create user account. Please try again.' },
-          { status: 500 }
-        );
+        const payload: any = { success: false, error: 'Failed to create user account. Please try again.' };
+        if (process.env.NODE_ENV !== 'production' && createError instanceof Error) {
+          payload.debug = { message: createError.message };
+        }
+        return NextResponse.json(payload, { status: 500 });
       }
     } else {
       console.error('❌ [verify-mobile-otp] User not found and no registration data available');
