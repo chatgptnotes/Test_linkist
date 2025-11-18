@@ -269,9 +269,13 @@ export async function POST(request: NextRequest) {
 
             if (voucher) {
               // Calculate discount amount
-              const discountAmount = paymentData.voucherDiscount
-                ? (totalAmount * paymentData.voucherDiscount) / 100
-                : 0;
+              let discountAmount = 0;
+              if (paymentData.voucherAmount !== undefined && paymentData.voucherAmount !== null) {
+                // voucherAmount expected in same currency units as totalAmount (dollars)
+                discountAmount = paymentData.voucherAmount;
+              } else if (paymentData.voucherDiscount) {
+                discountAmount = (totalAmount * paymentData.voucherDiscount) / 100;
+              }
 
               // Create voucher usage record
               await supabase

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SupabaseProfileStore, ProfileInput } from '@/lib/supabase-profile-store'
 import { createClient } from '@supabase/supabase-js'
+import { getCurrentUser } from '@/lib/auth-middleware'
+import { linkProfileToUser } from '@/lib/profile-users-helpers'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -8,6 +10,20 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 [POST /api/profiles/save] Request received')
+
+    // Get authenticated user
+    const authSession = await getCurrentUser(request)
+
+    if (!authSession.isAuthenticated || !authSession.user) {
+      console.error('❌ [POST /api/profiles/save] Authentication required')
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const userId = authSession.user.id
+    console.log('✅ [POST /api/profiles/save] Authenticated user:', userId)
 
     const data = await request.json()
 
@@ -38,12 +54,21 @@ export async function POST(request: NextRequest) {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Check if this user already has a claimed custom_url (from /claim-url page)
-    const { data: existingUserProfile } = await supabase
-      .from('profiles')
-      .select('custom_url')
-      .eq('email', data.email)
+    // Check if this user already has a profile with a claimed custom_url
+    // Query via profile_users junction table to ensure we get THIS user's profile only
+    const { data: existingProfileResult } = await supabase
+      .from('profile_users')
+      .select(`
+        profile_id,
+        profiles (
+          id,
+          custom_url
+        )
+      `)
+      .eq('user_id', userId)
       .maybeSingle()
+
+    const existingUserProfile = existingProfileResult?.profiles as any
 
     let finalCustomUrl: string
 
@@ -123,7 +148,7 @@ export async function POST(request: NextRequest) {
     // Prepare profile data for database
     const profileInput: ProfileInput = {
       email: data.email,
-      user_id: data.user_id || null,
+      user_id: userId, // Use authenticated user ID
       first_name: data.firstName,
       last_name: data.lastName,
       phone_number: data.mobileNumber || null,
@@ -160,7 +185,6 @@ export async function POST(request: NextRequest) {
         secondaryEmail: data.secondaryEmail || '',
         whatsappNumber: data.whatsappNumber || '',
         showEmailPublicly: data.showEmailPublicly ?? true,
-        showSecondaryEmailPublicly: data.showSecondaryEmailPublicly ?? true,
         showMobilePublicly: data.showMobilePublicly ?? true,
         showWhatsappPublicly: data.showWhatsappPublicly ?? false,
 
@@ -214,10 +238,16 @@ export async function POST(request: NextRequest) {
 
     console.log('💾 [POST /api/profiles/save] Saving profile to database...')
 
-    // Save to database using profile store
-    const savedProfile = await SupabaseProfileStore.upsertByEmail(profileInput)
+    // Save to database using profile store with user_id
+    // Pass existing profile ID if user already has one to update instead of create
+    const savedProfile = await SupabaseProfileStore.upsertByEmail(profileInput, userId, existingUserProfile?.id)
 
     console.log('✅ [POST /api/profiles/save] Profile saved successfully:', savedProfile.id)
+
+  // Ensure profile is linked to user in profile_users junction table
+  // linkProfileToUser expects (profileId, userId)
+  await linkProfileToUser(savedProfile.id, userId)
+    console.log('✅ [POST /api/profiles/save] Profile linked to user in junction table')
 
     // Save services if provided
     if (data.services && Array.isArray(data.services)) {
@@ -285,21 +315,48 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
+    // Get authenticated user
+    const authSession = await getCurrentUser(request)
 
-    if (!email) {
+    if (!authSession.isAuthenticated || !authSession.user) {
       return NextResponse.json(
-        { success: false, error: 'Email parameter is required' },
-        { status: 400 }
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
       )
     }
 
-    console.log('🔍 [GET /api/profiles/save] Fetching profile for email:', email)
+    const userId = authSession.user.id
+    const { searchParams } = new URL(request.url)
+    const profileId = searchParams.get('profileId')
 
-    const profile = await SupabaseProfileStore.getByEmail(email)
+    console.log('🔍 [GET /api/profiles/save] Fetching profile for user:', userId)
 
-    if (!profile) {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Fetch profile via profile_users junction table
+    let profileQuery = supabase
+      .from('profile_users')
+      .select(`
+        profile_id,
+        profiles (*)
+      `)
+      .eq('user_id', userId)
+
+    if (profileId) {
+      profileQuery = profileQuery.eq('profile_id', profileId)
+    }
+
+    const { data: result, error } = await profileQuery.maybeSingle()
+
+    if (error) {
+      console.error('❌ [GET /api/profiles/save] Database error:', error)
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch profile' },
+        { status: 500 }
+      )
+    }
+
+    if (!result || !result.profiles) {
       return NextResponse.json(
         { success: false, error: 'Profile not found' },
         { status: 404 }
@@ -308,7 +365,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      profile
+      profile: result.profiles
     })
 
   } catch (error) {

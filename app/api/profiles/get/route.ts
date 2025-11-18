@@ -1,36 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getCurrentUser } from '@/lib/auth-middleware';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
+    // Get authenticated user
+    const authSession = await getCurrentUser(request);
 
-    if (!email) {
+    if (!authSession.isAuthenticated || !authSession.user) {
       return NextResponse.json(
-        { success: false, error: 'Email is required' },
-        { status: 400 }
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
       );
     }
 
+    const userId = authSession.user.id;
+    const { searchParams } = new URL(request.url);
+    const profileId = searchParams.get('profileId');
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch profile from database
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .single();
+    // Fetch profile via profile_users junction table to ensure user owns this profile
+    let profileQuery = supabase
+      .from('profile_users')
+      .select(`
+        profile_id,
+        profiles (*)
+      `)
+      .eq('user_id', userId);
+
+    // If profileId is provided, filter by it
+    if (profileId) {
+      profileQuery = profileQuery.eq('profile_id', profileId);
+    }
+
+    const { data: result, error } = await profileQuery.single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No profile found
+        // No profile found for this user
         return NextResponse.json({
           success: false,
-          error: 'Profile not found',
+          error: 'Profile not found or you do not have access to it',
           profile: null
         });
       }
@@ -39,6 +53,17 @@ export async function GET(request: NextRequest) {
         { success: false, error: 'Failed to fetch profile' },
         { status: 500 }
       );
+    }
+
+    // Extract profile from junction table result
+    const profile = result?.profiles as any;
+
+    if (!profile) {
+      return NextResponse.json({
+        success: false,
+        error: 'Profile not found',
+        profile: null
+      });
     }
 
     // Fetch services for this profile

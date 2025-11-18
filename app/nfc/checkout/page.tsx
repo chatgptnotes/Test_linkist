@@ -296,7 +296,7 @@ export default function CheckoutPage() {
 
       try {
         // Check if user is a founding member
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           const isFoundingMember = data.user?.is_founding_member || false;
@@ -306,7 +306,7 @@ export default function CheckoutPage() {
         // Auto-validate and apply LINKISTFM voucher
         if (voucherCode === 'LINKISTFM') {
           console.log('Auto-applying LINKISTFM voucher...');
-          setAutoAppliedVoucher(true);
+          // only mark as auto-applied after a successful validation
           setApplyingVoucher(true);
 
           const pricing = calculatePricing();
@@ -327,9 +327,28 @@ export default function CheckoutPage() {
               setVoucherDiscountAmount(voucherData.voucher.discount_amount || 0);
               setVoucherType(voucherData.voucher.discount_type || 'fixed');
               setVoucherValid(true);
+              // mark auto-applied only after success
+              setAutoAppliedVoucher(true);
               console.log('✅ LINKISTFM voucher auto-applied:', voucherData.voucher.discount_value, 'Type:', voucherData.voucher.discount_type, 'Amount:', voucherData.voucher.discount_amount);
+            } else {
+              // Validation returned but voucher not valid
+              setVoucherDiscount(0);
+              setVoucherDiscountAmount(0);
+              setVoucherType('fixed');
+              setVoucherValid(false);
+              setAutoAppliedVoucher(false);
+              console.log('LINKISTFM auto-apply: voucher not valid', voucherData?.message || 'no message');
             }
+          } else {
+            // Non-OK response from validate endpoint
+            setVoucherDiscount(0);
+            setVoucherDiscountAmount(0);
+            setVoucherType('fixed');
+            setVoucherValid(false);
+            setAutoAppliedVoucher(false);
+            console.error('LINKISTFM auto-apply: validate endpoint returned non-OK status', voucherResponse.status);
           }
+
           setApplyingVoucher(false);
         }
       } catch (error) {

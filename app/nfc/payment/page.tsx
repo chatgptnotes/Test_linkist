@@ -561,6 +561,7 @@ export default function NFCPaymentPage() {
                 paymentId: paymentResult.paymentId,
                 voucherCode: voucherCode || null,
                 voucherDiscount: voucherDiscount || 0,
+                voucherAmount: voucherAmount || 0,
               }
             })
           });
