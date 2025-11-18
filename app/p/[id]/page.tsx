@@ -387,13 +387,15 @@ END:VCARD`;
                     <Mail className="h-4 w-4 mr-2" />
                     Email
                   </a>
-                  <a
-                    href={`tel:${profile.phone}`}
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = `tel:${profile.phone}`; }}
                     className="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition"
+                    aria-label={`Call ${profile.fullName || 'contact'}`}
                   >
                     <Phone className="h-4 w-4 mr-2" />
                     Call
-                  </a>
+                  </button>
                   <button
                     onClick={handleDownloadVCard}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"

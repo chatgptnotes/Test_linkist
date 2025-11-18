@@ -19,6 +19,12 @@ export async function POST(request: NextRequest) {
       } as VoucherValidationResponse, { status: 400 });
     }
 
+    console.log('🔍 [Voucher Validate] Looking up voucher:', {
+      code: body.code.toUpperCase(),
+      orderAmount: body.orderAmount,
+      userEmail: body.userEmail
+    });
+
     // Fetch voucher from database
     const { data: voucher, error } = await supabase
       .from('vouchers')
@@ -27,6 +33,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !voucher) {
+      console.error('❌ [Voucher Validate] Voucher not found:', {
+        code: body.code.toUpperCase(),
+        error: error?.message || 'No voucher data returned'
+      });
       return NextResponse.json({
         valid: false,
         message: 'Invalid voucher code',
@@ -34,8 +44,21 @@ export async function POST(request: NextRequest) {
       } as VoucherValidationResponse);
     }
 
+    console.log('✅ [Voucher Validate] Voucher found:', {
+      code: voucher.code,
+      is_active: voucher.is_active,
+      discount_type: voucher.discount_type,
+      discount_value: voucher.discount_value,
+      min_order_value: voucher.min_order_value,
+      valid_from: voucher.valid_from,
+      valid_until: voucher.valid_until,
+      usage_limit: voucher.usage_limit,
+      used_count: voucher.used_count
+    });
+
     // Check if voucher is active
     if (!voucher.is_active) {
+      console.error('❌ [Voucher Validate] Voucher is inactive');
       return NextResponse.json({
         valid: false,
         message: 'This voucher is no longer active',
@@ -49,6 +72,10 @@ export async function POST(request: NextRequest) {
     const validUntil = voucher.valid_until ? new Date(voucher.valid_until) : null;
 
     if (now < validFrom) {
+      console.error('❌ [Voucher Validate] Voucher not yet valid:', {
+        now: now.toISOString(),
+        validFrom: validFrom.toISOString()
+      });
       return NextResponse.json({
         valid: false,
         message: 'This voucher is not yet valid',
@@ -57,6 +84,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (validUntil && now > validUntil) {
+      console.error('❌ [Voucher Validate] Voucher has expired:', {
+        now: now.toISOString(),
+        validUntil: validUntil.toISOString()
+      });
       return NextResponse.json({
         valid: false,
         message: 'This voucher has expired',
@@ -66,6 +97,10 @@ export async function POST(request: NextRequest) {
 
     // Check usage limit
     if (voucher.usage_limit && voucher.used_count >= voucher.usage_limit) {
+      console.error('❌ [Voucher Validate] Usage limit exceeded:', {
+        used_count: voucher.used_count,
+        usage_limit: voucher.usage_limit
+      });
       return NextResponse.json({
         valid: false,
         message: 'This voucher has reached its usage limit',
@@ -75,6 +110,10 @@ export async function POST(request: NextRequest) {
 
     // Check minimum order value
     if (body.orderAmount < voucher.min_order_value) {
+      console.error('❌ [Voucher Validate] Minimum order value not met:', {
+        orderAmount: body.orderAmount,
+        minOrderValue: voucher.min_order_value
+      });
       return NextResponse.json({
         valid: false,
         message: `Minimum order value of $${voucher.min_order_value} required`,
