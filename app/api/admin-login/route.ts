@@ -50,10 +50,11 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('admin_session', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true, // Always secure for production (required for sameSite: 'none')
+      sameSite: 'none' as const, // Changed from 'strict' to 'none' for desktop browser compatibility
       maxAge: 24 * 60 * 60, // 24 hours
-      path: '/'
+      path: '/',
+      domain: process.env.COOKIE_DOMAIN || undefined // Support cross-subdomain cookies
     })
 
     return response
@@ -79,10 +80,11 @@ export async function DELETE() {
 
     response.cookies.set('admin_session', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none' as const,
       maxAge: 0,
-      path: '/'
+      path: '/',
+      domain: process.env.COOKIE_DOMAIN || undefined
     })
 
     return response

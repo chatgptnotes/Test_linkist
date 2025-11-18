@@ -1409,6 +1409,7 @@ function ProfileBuilderContent() {
       // Save to database with updated toggle value - properly map all fields
       const response = await fetch('/api/profiles/save', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1546,6 +1547,7 @@ function ProfileBuilderContent() {
 
       const response = await fetch('/api/profiles/save', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
