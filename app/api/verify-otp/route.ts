@@ -436,13 +436,14 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Set HTTP-only session cookie
+    // Set HTTP-only session cookie with proper cross-origin support for desktop browsers
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      secure: true, // Always secure for production (required for sameSite: 'none')
+      sameSite: 'none' as const, // Changed from 'lax' to 'none' for desktop browser compatibility
       maxAge: 30 * 24 * 60 * 60, // 30 days
-      path: '/'
+      path: '/',
+      domain: process.env.COOKIE_DOMAIN || undefined // Support cross-subdomain cookies
     };
 
     response.cookies.set('session', sessionId, cookieOptions);
