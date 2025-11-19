@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [Voucher Validate] Looking up voucher:', {
       code: body.code.toUpperCase(),
       orderAmount: body.orderAmount,
-      userEmail: body.userEmail
+      userEmail: body.userEmail,
+      isFoundingMember: body.isFoundingMember || false
     });
 
     // Fetch voucher from database
@@ -109,14 +110,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Check minimum order value
-    if (body.orderAmount < voucher.min_order_value) {
+    // Note: Founding members may have different minimum requirements for special vouchers
+    const isFoundingMember = body.isFoundingMember || false;
+    const effectiveMinOrderValue = voucher.min_order_value;
+
+    if (body.orderAmount < effectiveMinOrderValue) {
       console.error('❌ [Voucher Validate] Minimum order value not met:', {
         orderAmount: body.orderAmount,
-        minOrderValue: voucher.min_order_value
+        minOrderValue: effectiveMinOrderValue,
+        isFoundingMember: isFoundingMember
       });
       return NextResponse.json({
         valid: false,
-        message: `Minimum order value of $${voucher.min_order_value} required`,
+        message: `Minimum order value of $${effectiveMinOrderValue} required`,
         error: 'Minimum order value not met'
       } as VoucherValidationResponse);
     }
