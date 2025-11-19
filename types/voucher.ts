@@ -37,6 +37,7 @@ export interface VoucherValidationRequest {
   code: string;
   orderAmount: number;
   userEmail?: string;
+  isFoundingMember?: boolean;
 }
 
 export interface VoucherValidationResponse {

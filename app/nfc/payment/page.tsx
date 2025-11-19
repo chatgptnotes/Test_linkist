@@ -14,6 +14,7 @@ import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import Footer from '@/components/Footer';
+import { getOrderAmountForVoucher } from '@/lib/pricing-utils';
 
 // Icon aliases
 const CreditCard = CreditCardIcon;
@@ -160,38 +161,33 @@ export default function NFCPaymentPage() {
         console.log('🎫 Auto-applying LINKISTFM voucher with founding member status:', foundingMemberStatus);
 
         try {
-          // Calculate subtotal for validation WITH correct founding member status
-          let subtotal = 0;
+          // FIXED: Use unified pricing utility for consistent order amount calculation
+          const country = data.shipping?.country || 'US';
+          const orderAmount = getOrderAmountForVoucher({
+            cardConfig: {
+              baseMaterial: data.cardConfig?.baseMaterial || 'pvc',
+              quantity: data.cardConfig?.quantity || 1,
+            },
+            country: country,
+            isFoundingMember: foundingMemberStatus,
+          });
 
-          if (data?.cardConfig?.baseMaterial === 'digital') {
-            subtotal += data.pricing.digitalProfilePrice || 59;
-            if (!foundingMemberStatus) {
-              subtotal += data.pricing.subscriptionPrice || 120;
-            }
-          } else {
-            const materialPrice = data.pricing.materialPrice || 99;
-            const quantity = data?.cardConfig?.quantity || 1;
-            subtotal += materialPrice * quantity;
-
-            // App subscription - only add if NOT founding member
-            if (!foundingMemberStatus) {
-              const appPrice = data.pricing.appSubscriptionPrice || 120;
-              subtotal += appPrice * quantity;
-            }
-          }
-
-          // Add tax
-          subtotal += data.pricing.taxAmount || 0;
-
-          console.log('💰 Calculated subtotal for voucher validation:', subtotal, '(founding member:', foundingMemberStatus, ')');
+          console.log('💰 Calculated order amount for validation:', {
+            orderAmount,
+            country,
+            baseMaterial: data.cardConfig?.baseMaterial,
+            quantity: data.cardConfig?.quantity,
+            isFoundingMember: foundingMemberStatus
+          });
 
           const response = await fetch('/api/vouchers/validate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               code: 'LINKISTFM',
-              orderAmount: subtotal,
+              orderAmount: orderAmount,
               userEmail: data.email,
+              isFoundingMember: foundingMemberStatus, // NEW: Pass founding member status
             }),
           });
 
@@ -202,17 +198,21 @@ export default function NFCPaymentPage() {
               setVoucherAmount(voucherData.voucher.discount_amount);
               const discountPercent = voucherData.voucher.discount_type === 'percentage'
                 ? voucherData.voucher.discount_value
-                : Math.round((voucherData.voucher.discount_amount / (subtotal || 1)) * 100);
+                : Math.round((voucherData.voucher.discount_amount / (orderAmount || 1)) * 100);
               setVoucherDiscount(discountPercent);
               setVoucherValid(true);
               setAppliedVoucherCode('LINKISTFM');
               console.log('✅ LINKISTFM auto-applied successfully! Discount:', voucherData.voucher.discount_amount);
             } else {
-              console.log('❌ LINKISTFM validation failed:', voucherData.message);
+              console.error('❌ LINKISTFM validation failed:', voucherData.message || 'Unknown error');
             }
           } else {
             const errorData = await response.json();
-            console.error('❌ Voucher validation API error:', errorData);
+            console.error('❌ Voucher validation API error:', {
+              status: response.status,
+              message: errorData?.message || 'No message',
+              error: errorData?.error || 'Unknown'
+            });
           }
         } catch (error) {
           console.error('❌ Error auto-applying LINKISTFM:', error);
@@ -317,16 +317,25 @@ export default function NFCPaymentPage() {
 
     setApplyingVoucher(true);
     try {
-      // Use calculated subtotal for voucher validation
-      const amountForValidation = getSubtotal();
+      // FIXED: Use unified pricing utility for consistent order amount
+      const country = orderData?.shipping?.country || 'US';
+      const orderAmount = getOrderAmountForVoucher({
+        cardConfig: {
+          baseMaterial: orderData?.cardConfig?.baseMaterial || 'pvc',
+          quantity: orderData?.cardConfig?.quantity || 1,
+        },
+        country: country,
+        isFoundingMember: isFoundingMember,
+      });
 
       const response = await fetch('/api/vouchers/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: voucherCode.toUpperCase(),
-          orderAmount: amountForValidation,
-          userEmail: orderData?.email
+          orderAmount: orderAmount,
+          userEmail: orderData?.email,
+          isFoundingMember: isFoundingMember // NEW: Pass founding member status
         })
       });
 
@@ -339,7 +348,7 @@ export default function NFCPaymentPage() {
         // Calculate discount percentage for display (for backward compatibility)
         const discountPercent = result.voucher.discount_type === 'percentage'
           ? result.voucher.discount_value
-          : Math.round((result.voucher.discount_amount / (orderData?.pricing.total || 1)) * 100);
+          : Math.round((result.voucher.discount_amount / (orderAmount || 1)) * 100);
 
         setVoucherDiscount(discountPercent);
         setVoucherValid(true);

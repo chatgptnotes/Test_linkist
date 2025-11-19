@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Footer from '@/components/Footer';
 import { Country, State, City } from 'country-state-city';
+import { getOrderAmountForVoucher } from '@/lib/pricing-utils';
 // PIN verification removed - no longer needed
 
 // Dynamically import MapPicker to avoid SSR issues
@@ -112,36 +113,14 @@ export default function CheckoutPage() {
   // PIN modal and related state removed - no longer needed
   // const [step, setStep] = useState<'shipping' | 'payment' | 'review'>('shipping');
 
-  // Initialize voucher state from localStorage to prevent price flash
-  const getInitialVoucherState = () => {
-    if (typeof window === 'undefined') return { code: 'LINKISTFM', discount: 0, amount: 0, type: 'fixed', valid: null };
-
-    try {
-      const savedState = localStorage.getItem('checkoutVoucherState');
-      if (savedState) {
-        const parsed = JSON.parse(savedState);
-        return {
-          code: parsed.voucherCode || 'LINKISTFM',
-          discount: parsed.voucherDiscount || 0,
-          amount: parsed.voucherDiscountAmount || 0,
-          type: parsed.voucherType || 'fixed',
-          valid: parsed.voucherValid || null
-        };
-      }
-    } catch (error) {
-      console.error('Error loading initial voucher state:', error);
-    }
-    return { code: 'LINKISTFM', discount: 0, amount: 0, type: 'fixed', valid: null };
-  };
-
-  const initialVoucher = getInitialVoucherState();
-
-  // Voucher state - initialized from localStorage
-  const [voucherCode, setVoucherCode] = useState(initialVoucher.code);
-  const [voucherDiscount, setVoucherDiscount] = useState(initialVoucher.discount);
-  const [voucherDiscountAmount, setVoucherDiscountAmount] = useState(initialVoucher.amount);
-  const [voucherType, setVoucherType] = useState<'fixed' | 'percentage'>(initialVoucher.type);
-  const [voucherValid, setVoucherValid] = useState<boolean | null>(initialVoucher.valid);
+  // FIXED: Don't initialize from localStorage - causes stale state issues
+  // Let auto-apply run fresh validation on each page load
+  // Voucher state - starts fresh, no localStorage initialization
+  const [voucherCode, setVoucherCode] = useState('LINKISTFM');
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [voucherDiscountAmount, setVoucherDiscountAmount] = useState(0);
+  const [voucherType, setVoucherType] = useState<'fixed' | 'percentage'>('fixed');
+  const [voucherValid, setVoucherValid] = useState<boolean | null>(null);
   const [applyingVoucher, setApplyingVoucher] = useState(false);
   const [autoAppliedVoucher, setAutoAppliedVoucher] = useState(false);
   const [userIsFoundingMember, setUserIsFoundingMember] = useState(false);
@@ -200,23 +179,12 @@ export default function CheckoutPage() {
 
     checkFoundingMemberEarly();
 
-    // Restore voucher state from localStorage if it exists
-    const savedVoucherState = localStorage.getItem('checkoutVoucherState');
-    if (savedVoucherState) {
-      try {
-        const voucherState = JSON.parse(savedVoucherState);
-        if (voucherState.voucherCode) {
-          setVoucherCode(voucherState.voucherCode);
-          setVoucherDiscount(voucherState.voucherDiscount || 0);
-          setVoucherDiscountAmount(voucherState.voucherDiscountAmount || 0);
-          setVoucherType(voucherState.voucherType || 'fixed');
-          setVoucherValid(voucherState.voucherValid || false);
-          console.log('Checkout: Restored voucher state from localStorage:', voucherState);
-        }
-      } catch (error) {
-        console.error('Checkout: Error parsing saved voucher state:', error);
-      }
-    }
+    // FIXED: Don't restore voucher state from localStorage
+    // This causes stale validation to override fresh auto-apply
+    // Instead, let auto-apply run fresh validation each time
+    // Clear any old saved state
+    localStorage.removeItem('checkoutVoucherState');
+    console.log('✅ Cleared stale voucher state - will run fresh validation');
 
     // Check for nfcConfig first (this is what configure page saves)
     const nfcConfigStr = localStorage.getItem('nfcConfig');
@@ -302,83 +270,144 @@ export default function CheckoutPage() {
   }, []);
 
   // Auto-apply LINKISTFM voucher on page load
+  // FIXED: Race condition resolved by running only once on mount
   useEffect(() => {
+    let isMounted = true;
+    let abortController = new AbortController();
+
     const autoApplyVoucher = async () => {
-      // Only run once and if not already applied
-      if (autoAppliedVoucher || voucherValid === true) return;
+      // Only run if not already processed
+      if (autoAppliedVoucher) {
+        console.log('🔄 Auto-apply skipped - already processed');
+        return;
+      }
 
       // Check if user email is available from form data
       const userEmail = watchedValues.email;
       if (!userEmail) {
-        // Wait for email to be available
+        console.log('⏳ Auto-apply waiting for email...');
+        return;
+      }
+
+      // Don't auto-apply if voucher code is empty or already validated
+      if (!voucherCode || voucherCode !== 'LINKISTFM') {
+        console.log('⏭️ Auto-apply skipped - no LINKISTFM code');
         return;
       }
 
       try {
-        // Check if user is a founding member
-        const response = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' });
-        if (response.ok) {
-          const data = await response.json();
-          const isFoundingMember = data.user?.is_founding_member || false;
-          setUserIsFoundingMember(isFoundingMember);
+        console.log('🚀 Starting LINKISTFM auto-apply...');
+        setApplyingVoucher(true);
+
+        // STEP 1: Get founding member status FIRST (before any pricing calculations)
+        let isFoundingMember = false;
+        try {
+          const meResponse = await fetch('/api/auth/me', {
+            credentials: 'include',
+            cache: 'no-store',
+            signal: abortController.signal
+          });
+          if (meResponse.ok && isMounted) {
+            const meData = await meResponse.json();
+            isFoundingMember = meData.user?.is_founding_member || false;
+            setUserIsFoundingMember(isFoundingMember);
+            console.log('👤 Founding member status:', isFoundingMember);
+          }
+        } catch (error: any) {
+          if (error.name === 'AbortError') return;
+          console.warn('⚠️ Could not check founding member status:', error);
         }
 
-        // Auto-validate and apply LINKISTFM voucher
-        if (voucherCode === 'LINKISTFM') {
-          console.log('Auto-applying LINKISTFM voucher...');
-          // only mark as auto-applied after a successful validation
-          setApplyingVoucher(true);
+        // STEP 2: Calculate order amount using unified pricing utility
+        // Calculate pricing OUTSIDE the async function to avoid stale closures
+        const country = watchedValues.country || 'US';
+        const orderAmount = getOrderAmountForVoucher({
+          cardConfig: {
+            baseMaterial: (cardConfig?.baseMaterial as any) || 'pvc',
+            quantity: quantity,
+          },
+          country: country,
+          isFoundingMember: isFoundingMember,
+        });
 
-          const pricing = calculatePricing();
-          const voucherResponse = await fetch('/api/vouchers/validate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              code: 'LINKISTFM',
-              orderAmount: pricing.totalBeforeDiscount || 100,
-              userEmail: userEmail,
-            }),
-          });
+        console.log('💰 Calculated order amount for validation:', {
+          orderAmount,
+          country,
+          baseMaterial: cardConfig?.baseMaterial,
+          quantity,
+          isFoundingMember
+        });
 
-          if (voucherResponse.ok) {
-            const voucherData = await voucherResponse.json();
-            if (voucherData.valid && voucherData.voucher) {
-              setVoucherDiscount(voucherData.voucher.discount_value);
-              setVoucherDiscountAmount(voucherData.voucher.discount_amount || 0);
-              setVoucherType(voucherData.voucher.discount_type || 'fixed');
-              setVoucherValid(true);
-              // mark auto-applied only after success
-              setAutoAppliedVoucher(true);
-              console.log('✅ LINKISTFM voucher auto-applied:', voucherData.voucher.discount_value, 'Type:', voucherData.voucher.discount_type, 'Amount:', voucherData.voucher.discount_amount);
-            } else {
-              // Validation returned but voucher not valid
-              setVoucherDiscount(0);
-              setVoucherDiscountAmount(0);
-              setVoucherType('fixed');
-              setVoucherValid(false);
-              setAutoAppliedVoucher(false);
-              console.log('LINKISTFM auto-apply: voucher not valid', voucherData?.message || 'no message');
-            }
+        // STEP 3: Validate voucher with all required parameters
+        const voucherResponse = await fetch('/api/vouchers/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: 'LINKISTFM',
+            orderAmount: orderAmount,
+            userEmail: userEmail,
+            isFoundingMember: isFoundingMember, // NEW: Pass founding member status
+          }),
+          signal: abortController.signal,
+        });
+
+        if (!isMounted) return;
+
+        if (voucherResponse.ok) {
+          const voucherData = await voucherResponse.json();
+          if (voucherData.valid && voucherData.voucher) {
+            setVoucherDiscount(voucherData.voucher.discount_value);
+            setVoucherDiscountAmount(voucherData.voucher.discount_amount || 0);
+            setVoucherType(voucherData.voucher.discount_type || 'fixed');
+            setVoucherValid(true);
+            setAutoAppliedVoucher(true);
+            console.log('✅ LINKISTFM auto-applied successfully:', {
+              discount: voucherData.voucher.discount_value,
+              type: voucherData.voucher.discount_type,
+              amount: voucherData.voucher.discount_amount
+            });
           } else {
-            // Non-OK response from validate endpoint
-            setVoucherDiscount(0);
-            setVoucherDiscountAmount(0);
-            setVoucherType('fixed');
+            // Validation failed
+            console.error('❌ LINKISTFM validation failed:', voucherData?.message || 'Unknown error');
             setVoucherValid(false);
-            setAutoAppliedVoucher(false);
-            console.error('LINKISTFM auto-apply: validate endpoint returned non-OK status', voucherResponse.status);
+            setAutoAppliedVoucher(true); // Mark as attempted to prevent re-runs
           }
-
+        } else {
+          const errorData = await voucherResponse.json();
+          console.error('❌ LINKISTFM validation error:', {
+            status: voucherResponse.status,
+            message: errorData?.message || 'No message',
+            error: errorData?.error || 'Unknown'
+          });
+          setVoucherValid(false);
+          setAutoAppliedVoucher(true); // Mark as attempted
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('🛑 Auto-apply cancelled');
+          return;
+        }
+        console.error('❌ Error auto-applying voucher:', error);
+        setAutoAppliedVoucher(true); // Mark as attempted to prevent infinite retries
+      } finally {
+        if (isMounted) {
           setApplyingVoucher(false);
         }
-      } catch (error) {
-        console.error('Error auto-applying voucher:', error);
-        setApplyingVoucher(false);
       }
     };
 
-    autoApplyVoucher();
-  }, [autoAppliedVoucher, voucherCode, voucherValid, watchedValues.email]);
+    // Only run auto-apply when email becomes available
+    if (watchedValues.email && !autoAppliedVoucher) {
+      autoApplyVoucher();
+    }
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+    // FIXED: Only depend on email and autoAppliedVoucher flag
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValues.email, autoAppliedVoucher]);
 
   // Save voucher state to localStorage whenever it changes
   useEffect(() => {
@@ -490,13 +519,25 @@ export default function CheckoutPage() {
 
     setApplyingVoucher(true);
     try {
+      // Calculate order amount using unified pricing utility
+      const country = watchedValues.country || 'US';
+      const orderAmount = getOrderAmountForVoucher({
+        cardConfig: {
+          baseMaterial: (cardConfig?.baseMaterial as any) || 'pvc',
+          quantity: quantity,
+        },
+        country: country,
+        isFoundingMember: userIsFoundingMember,
+      });
+
       const response = await fetch('/api/vouchers/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: voucherCode.toUpperCase(),
-          orderAmount: pricing.totalBeforeDiscount || 0,
-          userEmail: watchedValues.email
+          orderAmount: orderAmount,
+          userEmail: watchedValues.email,
+          isFoundingMember: userIsFoundingMember
         })
       });
 

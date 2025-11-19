@@ -27,6 +27,17 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
 
+    // Log basic request metadata to help debug environment-specific failures
+    const originHeader = request.headers.get('origin') || request.headers.get('referer') || ''
+    const userAgent = request.headers.get('user-agent') || ''
+    const bodySize = JSON.stringify(data).length
+
+    console.log('📦 [POST /api/profiles/save] Request metadata:', {
+      origin: originHeader,
+      userAgent: userAgent.split(' ')[0] || userAgent,
+      bodySize
+    })
+
     console.log('📦 [POST /api/profiles/save] Request data:', {
       email: data.email,
       firstName: data.firstName,
@@ -301,7 +312,13 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ [POST /api/profiles/save] Error saving profile:', error)
+    // Log expanded error details (including non-enumerable properties) to server logs
+    try {
+      const errDump = JSON.stringify(error, Object.getOwnPropertyNames(error))
+      console.error('❌ [POST /api/profiles/save] Error saving profile (details):', errDump)
+    } catch (dumpErr) {
+      console.error('❌ [POST /api/profiles/save] Error saving profile:', error)
+    }
 
     return NextResponse.json(
       {
