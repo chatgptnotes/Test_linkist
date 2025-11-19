@@ -87,13 +87,14 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Set session cookie
+    // Set session cookie with proper cross-origin support for desktop browsers
     response.cookies.set('session', user.id, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always secure for production (required for sameSite: 'none')
+      sameSite: 'none' as const, // Changed from 'lax' to 'none' for desktop browser compatibility
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
+      domain: process.env.COOKIE_DOMAIN || undefined // Support cross-subdomain cookies
     });
 
     return response;
