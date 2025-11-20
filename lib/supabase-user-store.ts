@@ -50,6 +50,9 @@ export interface CreateUserInput {
   status?: UserStatus
   email_verified?: boolean
   mobile_verified?: boolean
+  is_founding_member?: boolean
+  founding_member_plan?: string | null
+  founding_member_since?: string | null
 }
 
 export const SupabaseUserStore = {
@@ -92,6 +95,9 @@ export const SupabaseUserStore = {
       status: input.status || 'pending',
       email_verified: input.email_verified || false,
       mobile_verified: input.mobile_verified || false,
+      is_founding_member: input.is_founding_member || false,
+      founding_member_plan: input.founding_member_plan || null,
+      founding_member_since: input.founding_member_since || null,
     }
 
     const { data, error } = await supabase

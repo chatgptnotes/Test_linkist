@@ -221,6 +221,9 @@ export async function POST(request: NextRequest) {
               status: 'pending',
               email_verified: false,
               mobile_verified: false,
+              is_founding_member: mobileRecord.temp_user_data.isFoundingMember || false,
+              founding_member_plan: mobileRecord.temp_user_data.foundingMemberPlan || null,
+              founding_member_since: mobileRecord.temp_user_data.foundingMemberSince || null,
             });
 
             console.log('✅ [verify-otp] New user created with pending status:', user.id);
@@ -333,6 +336,9 @@ export async function POST(request: NextRequest) {
               status: 'pending',
               email_verified: false,
               mobile_verified: false,
+              is_founding_member: storedRecord.temp_user_data.isFoundingMember || false,
+              founding_member_plan: storedRecord.temp_user_data.foundingMemberPlan || null,
+              founding_member_since: storedRecord.temp_user_data.foundingMemberSince || null,
             });
 
             console.log('✅ [verify-otp] New user created with pending status:', user.id);

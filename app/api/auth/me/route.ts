@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
         email_verified: user.email_verified,
         mobile_verified: user.mobile_verified,
         role: user.role,
-        created_at: user.created_at
+        created_at: user.created_at,
+        is_founding_member: user.is_founding_member || false,
+        founding_member_since: user.founding_member_since || null,
+        founding_member_plan: user.founding_member_plan || null
       },
       permissions,
       canAccessAdmin,

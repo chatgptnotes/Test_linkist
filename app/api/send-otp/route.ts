@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { emailOrPhone, email, mobile, firstName, lastName } = body;
+    const { emailOrPhone, email, mobile, firstName, lastName, isFoundingMember, foundingMemberPlan, foundingMemberSince } = body;
 
     // Determine identifier for rate limiting
     identifier = email || mobile || emailOrPhone;
@@ -135,7 +135,10 @@ export async function POST(request: NextRequest) {
               firstName,
               lastName,
               email,
-              phone: null
+              phone: null,
+              isFoundingMember: isFoundingMember || false,
+              foundingMemberPlan: foundingMemberPlan || null,
+              foundingMemberSince: foundingMemberSince || null
             }
           });
         } catch (error) {
@@ -153,7 +156,10 @@ export async function POST(request: NextRequest) {
               firstName,
               lastName,
               email,
-              phone: null
+              phone: null,
+              isFoundingMember: isFoundingMember || false,
+              foundingMemberPlan: foundingMemberPlan || null,
+              foundingMemberSince: foundingMemberSince || null
             }
           });
           stored = true;
