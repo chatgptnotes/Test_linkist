@@ -442,17 +442,33 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Set HTTP-only session cookie with proper cross-origin support for desktop browsers
+    // Detect if request is from mobile browser
+    const userAgent = request.headers.get('user-agent') || '';
+    const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+
+    console.log('🔐 [verify-otp] Setting session cookie. Mobile:', isMobile, 'User-Agent:', userAgent.substring(0, 50));
+
+    // Set HTTP-only session cookie that works on BOTH desktop and mobile browsers
+    // Key insight: Use 'lax' which works well on mobile, and ensure proper secure/domain settings for desktop
     const cookieOptions = {
       httpOnly: true,
-      secure: true, // Always secure for production (required for sameSite: 'none')
-      sameSite: 'none' as const, // Changed from 'lax' to 'none' for desktop browser compatibility
+      secure: process.env.NODE_ENV === 'production', // Secure in production, allow HTTP in development
+      sameSite: 'lax' as const, // 'lax' works on both mobile and desktop when configured correctly
       maxAge: 30 * 24 * 60 * 60, // 30 days
       path: '/',
       domain: process.env.COOKIE_DOMAIN || undefined // Support cross-subdomain cookies
     };
 
     response.cookies.set('session', sessionId, cookieOptions);
+
+    // Also send session token in response body as fallback for mobile apps
+    console.log('✅ [verify-otp] Session cookie set with options:', {
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      domain: cookieOptions.domain,
+      path: cookieOptions.path,
+      sessionId: sessionId.substring(0, 20) + '...'
+    });
 
     return response;
 
