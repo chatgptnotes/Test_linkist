@@ -26,6 +26,7 @@ import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloseIcon from '@mui/icons-material/Close';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
 // Icon aliases
 const Package = Inventory2Icon;
@@ -49,6 +50,7 @@ const MailIcon = MailOutlineIcon;
 const QrCode2 = QrCode2Icon;
 const CloudDownload = CloudDownloadIcon;
 const Close = CloseIcon;
+const ExternalLink = OpenInNewIcon;
 
 interface User {
   id: string;
@@ -725,6 +727,52 @@ export default function AccountPage() {
               }}
             >
               {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const baseUrl = getBaseUrl();
+                let username = 'your-profile';
+
+                if (profileData?.customUrl) {
+                  username = profileData.customUrl;
+                } else if (user?.first_name) {
+                  username = user.first_name.toLowerCase().replace(/\s+/g, '-');
+                } else if (profileData?.first_name) {
+                  username = profileData.first_name.toLowerCase().replace(/\s+/g, '-');
+                } else if (profileData?.email) {
+                  username = profileData.email.split('@')[0];
+                }
+
+                const profileUrl = `${baseUrl}/${username}`;
+                window.open(profileUrl, '_blank');
+              }}
+              className="flex-1"
+              style={{
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                minHeight: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#b91c1c';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+              }}
+            >
+              <ExternalLink style={{ width: '20px', height: '20px' }} />
+              View Profile
             </button>
             <button
               type="button"
