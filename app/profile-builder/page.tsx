@@ -159,7 +159,7 @@ function ProfileBuilderContent() {
 
           localStorage.setItem('userProfiles', JSON.stringify(profiles));
           alert('Profile updated successfully!');
-          router.push('/profiles/dashboard');
+          router.push('/profile-dashboard');
         }
       }
     } else {

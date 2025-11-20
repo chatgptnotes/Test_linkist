@@ -169,7 +169,7 @@ export default function ProfileTemplatesPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
-                onClick={() => router.push('/profiles/dashboard')}
+                onClick={() => router.push('/profile-dashboard')}
                 className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="h-5 w-5" />

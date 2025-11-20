@@ -117,6 +117,10 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
       localStorage.removeItem('productSelection');
       localStorage.removeItem('pendingOrder');
       localStorage.removeItem('orderConfirmation');
+      localStorage.removeItem('checkoutVoucherState');
+      localStorage.removeItem('nfcConfig');
+      localStorage.removeItem('cardConfig');
+      localStorage.removeItem('orderData');
 
       // Call logout API
       await fetch('/api/auth/logout', { method: 'POST' });

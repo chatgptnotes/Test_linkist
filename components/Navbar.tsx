@@ -179,7 +179,7 @@ export default function Navbar() {
                   <button
                     onClick={() => {
                       setIsDropdownOpen(false);
-                      router.push('/dashboard');
+                      router.push('/profile-dashboard');
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >

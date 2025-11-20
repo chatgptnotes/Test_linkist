@@ -7,7 +7,7 @@ export default function ProfilesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/profiles/dashboard');
+    router.replace('/profile-dashboard');
   }, [router]);
 
   return null;

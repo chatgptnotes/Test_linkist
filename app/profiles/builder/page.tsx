@@ -2356,7 +2356,7 @@ function ProfileBuilderContent() {
                               setProfileData({ ...profileData, companyWebsite: fullUrl });
                             }}
                             className="flex-1 px-2 py-2 border-0 outline-none rounded-r-lg"
-                            placeholder="ratioxlabs.com"
+                            placeholder="yourwebsite.com"
                           />
                         </div>
                         <div className="flex items-center gap-2 mt-2">

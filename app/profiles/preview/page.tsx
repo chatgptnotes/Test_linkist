@@ -825,7 +825,7 @@ export default function ProfilePreviewPage() {
             Edit Profile
           </button>
           <button
-            onClick={() => router.push('/profiles/dashboard')}
+            onClick={() => router.push('/profile-dashboard')}
             className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors shadow-lg text-sm sm:text-base border-0 cursor-pointer"
             style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
           >

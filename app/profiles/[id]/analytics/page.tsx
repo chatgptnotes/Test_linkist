@@ -232,7 +232,7 @@ export default function ProfileAnalytics() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push('/profiles/dashboard')}
+            onClick={() => router.push('/profile-dashboard')}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="h-5 w-5 mr-1" />
