@@ -101,7 +101,7 @@ export default function CheckoutPage() {
   }>({});
 
   // Location dropdown states
-  const [selectedCountry, setSelectedCountry] = useState<string>('');
+  const [selectedCountry, setSelectedCountry] = useState<string>('IN'); // FIXED: Initialize with India default
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [availableStates, setAvailableStates] = useState<any[]>([]);
@@ -138,7 +138,7 @@ export default function CheckoutPage() {
       lastName: '',
       quantity: 1,
       isFounderMember: true,
-      country: 'US',
+      country: 'IN', // FIXED: Default to India to match GST display
     },
   });
 
@@ -146,11 +146,11 @@ export default function CheckoutPage() {
   const quantity = watchedValues.quantity || 1;
   const isFounderMember = watchedValues.isFounderMember || false;
 
-  // Initialize country dropdown state to match form default
+  // FIXED: Keep country dropdown state in sync with form value
   useEffect(() => {
-    if (!selectedCountry && watchedValues.country) {
+    if (watchedValues.country && selectedCountry !== watchedValues.country) {
       setSelectedCountry(watchedValues.country);
-      previousCountryRef.current = watchedValues.country; // Track initial country
+      previousCountryRef.current = watchedValues.country; // Track country change
       const states = State.getStatesOfCountry(watchedValues.country);
       setAvailableStates(states);
     }
