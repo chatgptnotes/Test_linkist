@@ -140,6 +140,17 @@ async function handlePaymentSuccess(paymentIntent: any) {
     // Generate order number with plan-specific prefix
     const orderNumber = await generateOrderNumber(planType);
 
+    // Log warning if pricing metadata is missing
+    if (!paymentIntent.metadata?.subtotal || !paymentIntent.metadata?.shipping || !paymentIntent.metadata?.tax) {
+      console.warn('⚠️ [stripe-webhook] Pricing metadata incomplete:', {
+        subtotal: paymentIntent.metadata?.subtotal || 'MISSING',
+        shipping: paymentIntent.metadata?.shipping || 'MISSING',
+        tax: paymentIntent.metadata?.tax || 'MISSING',
+        total: paymentIntent.amount / 100,
+        message: 'Using fallback values (0). Ensure pricing metadata is set in payment intent creation.'
+      });
+    }
+
     // Create order in database
     const order = await SupabaseOrderStore.create({
       orderNumber,
@@ -169,9 +180,9 @@ async function handlePaymentSuccess(paymentIntent: any) {
         phoneNumber: paymentIntent.metadata?.phone || paymentIntent.metadata?.mobile || ''
       },
       pricing: {
-        subtotal: parseFloat(paymentIntent.metadata?.subtotal || '29.99'),
-        shipping: parseFloat(paymentIntent.metadata?.shipping || '5.00'),
-        tax: parseFloat(paymentIntent.metadata?.tax || '1.75'),
+        subtotal: parseFloat(paymentIntent.metadata?.subtotal || '0'),
+        shipping: parseFloat(paymentIntent.metadata?.shipping || '0'),
+        tax: parseFloat(paymentIntent.metadata?.tax || '0'),
         total: paymentIntent.amount / 100 // Convert from cents
       },
       estimatedDelivery: calculateEstimatedDelivery(),
@@ -379,9 +390,9 @@ async function handlePaymentFailure(paymentIntent: any) {
         phoneNumber: paymentIntent.metadata?.phone || paymentIntent.metadata?.mobile || ''
       },
       pricing: {
-        subtotal: parseFloat(paymentIntent.metadata?.subtotal || '29.99'),
-        shipping: parseFloat(paymentIntent.metadata?.shipping || '5.00'),
-        tax: parseFloat(paymentIntent.metadata?.tax || '1.75'),
+        subtotal: parseFloat(paymentIntent.metadata?.subtotal || '0'),
+        shipping: parseFloat(paymentIntent.metadata?.shipping || '0'),
+        tax: parseFloat(paymentIntent.metadata?.tax || '0'),
         total: paymentIntent.amount / 100 // Convert from cents
       },
       notes: `Payment failed - Stripe Payment Intent: ${paymentIntent.id}\nError: ${paymentIntent.last_payment_error?.message}\nError Code: ${paymentIntent.last_payment_error?.code}\nDecline Code: ${paymentIntent.last_payment_error?.decline_code || 'N/A'}`,

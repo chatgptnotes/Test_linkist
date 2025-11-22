@@ -739,6 +739,12 @@ export default function CheckoutPage() {
             country: orderPayload.shipping.country,
             postalCode: orderPayload.shipping.postalCode,
           },
+          pricing: {
+            subtotal: orderPayload.pricing.subtotal,
+            shipping: orderPayload.pricing.shippingCost,
+            tax: orderPayload.pricing.taxAmount,
+            total: orderPayload.pricing.total,
+          },
         }),
       });
 

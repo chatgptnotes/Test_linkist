@@ -15,6 +15,7 @@ import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import Footer from '@/components/Footer';
 import { getOrderAmountForVoucher } from '@/lib/pricing-utils';
+import StripePaymentModal from '@/components/StripePaymentModal';
 
 // Icon aliases
 const CreditCard = CreditCardIcon;
@@ -87,6 +88,11 @@ export default function NFCPaymentPage() {
 
   // Founding member status
   const [isFoundingMember, setIsFoundingMember] = useState(false);
+
+  // Stripe Modal state
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [stripeClientSecret, setStripeClientSecret] = useState('');
+  const [stripePaymentAmount, setStripePaymentAmount] = useState(0);
 
   useEffect(() => {
     const initializePaymentPage = async () => {
@@ -443,19 +449,68 @@ export default function NFCPaymentPage() {
 
   const handleStripePayment = async () => {
     try {
-      // For demo purposes, simulate successful card payment
-      // In production, you'd integrate with actual Stripe payment intent
-      console.log('💳 Processing Stripe payment...');
-      console.log('💳 Card details:', { cardNumber, expiryDate, cvv: '***' });
+      if (!orderData) {
+        throw new Error('No order data available');
+      }
 
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('💳 Creating Stripe payment intent...');
 
-      console.log('✅ Stripe payment simulated successfully');
-      return { success: true, paymentId: 'stripe_' + Date.now() };
+      // Calculate final amount with voucher discount
+      const finalAmount = getFinalAmount();
+
+      // Create payment intent
+      // Note: finalAmount already has voucher discount applied by frontend
+      const response = await fetch('/api/payment/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: finalAmount, // Already includes voucher discount
+          currency: 'usd',
+          orderId: orderData.orderId, // Required for idempotency
+          orderData: {
+            customerName: orderData.customerName,
+            email: orderData.email,
+            phoneNumber: orderData.phoneNumber,
+            pricing: {
+              subtotal: orderData.pricing?.subtotal || 0,
+              shipping: orderData.pricing?.shipping || 0,
+              tax: orderData.pricing?.tax || 0,
+            },
+          },
+          // Don't send voucherCode here - discount already applied in finalAmount
+          // Voucher will be tracked when order is processed after payment
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create payment intent');
+      }
+
+      console.log('✅ Payment intent created:', data.paymentIntentId);
+      console.log('💳 Original amount:', data.originalAmount / 100);
+      console.log('💳 Discount:', data.discountAmount / 100);
+      console.log('💳 Final amount:', data.amount / 100);
+
+      // Store client secret and amount for modal
+      setStripeClientSecret(data.clientSecret);
+      setStripePaymentAmount(data.amount);
+
+      // Open Stripe payment modal
+      setShowStripeModal(true);
+
+      // Return modal flag to indicate we're waiting for payment confirmation
+      // Actual payment processing will happen in handleModalPaymentSuccess callback
+      return {
+        modalOpened: true, // Flag to indicate we're waiting for modal completion
+      };
     } catch (error) {
       console.error('❌ Stripe payment error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Payment failed' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment failed'
+      };
     }
   };
 
@@ -504,13 +559,15 @@ export default function NFCPaymentPage() {
 
       switch (paymentMethod) {
         case 'card':
-          if (!cardNumber || !expiryDate || !cvv) {
-            alert('Please enter all card details');
+          console.log('💳 Processing card payment with Stripe...');
+          paymentResult = await handleStripePayment();
+
+          // If modal opened, stop here and wait for modal callback
+          if (paymentResult && paymentResult.modalOpened) {
+            console.log('💳 Stripe payment modal opened, waiting for user...');
             setProcessing(false);
             return;
           }
-          console.log('💳 Processing card payment...');
-          paymentResult = await handleStripePayment();
           break;
 
         case 'upi':
@@ -538,6 +595,10 @@ export default function NFCPaymentPage() {
           paymentMethod,
           paymentId: paymentResult.paymentId,
           amount: getFinalAmount(),
+          pricing: {
+            ...orderData.pricing,
+            total: getFinalAmount()
+          },
           voucherCode: voucherCode || null,
           voucherDiscount: voucherDiscount || 0,
           timestamp: new Date().toISOString()
@@ -609,6 +670,90 @@ export default function NFCPaymentPage() {
       alert('Payment failed. Please try again.');
       setProcessing(false);
     }
+  };
+
+  // Handle successful Stripe payment from modal
+  const handleModalPaymentSuccess = async (paymentIntentId: string) => {
+    console.log('✅ Stripe payment succeeded in modal:', paymentIntentId);
+    setShowStripeModal(false);
+    setProcessing(true);
+
+    try {
+      // Store payment confirmation
+      const orderConfirmation = {
+        ...orderData,
+        paymentMethod: 'card',
+        paymentId: paymentIntentId,
+        amount: getFinalAmount(),
+        pricing: {
+          ...orderData.pricing,
+          total: getFinalAmount()
+        },
+        voucherCode: appliedVoucherCode || voucherCode || null,
+        voucherDiscount: voucherDiscount || 0,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('💾 Storing order confirmation:', orderConfirmation);
+      localStorage.setItem('orderConfirmation', JSON.stringify(orderConfirmation));
+
+      // Update existing order with payment details using process-order API
+      console.log('📝 Updating order with payment details...');
+
+      const response = await fetch('/api/process-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderData.orderId,
+          cardConfig: orderData.cardConfig,
+          checkoutData: {
+            email: orderData.email,
+            fullName: orderData.customerName,
+            phoneNumber: orderData.phoneNumber,
+            addressLine1: orderData.shipping.addressLine1,
+            addressLine2: orderData.shipping.addressLine2,
+            city: orderData.shipping.city,
+            state: orderData.shipping.stateProvince,
+            country: orderData.shipping.country,
+            postalCode: orderData.shipping.postalCode,
+          },
+          paymentData: {
+            paymentMethod: 'card',
+            paymentId: paymentIntentId,
+            voucherCode: appliedVoucherCode || voucherCode || null,
+            voucherDiscount: voucherDiscount || 0,
+            voucherAmount: voucherAmount || 0,
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process order');
+      }
+
+      const result = await response.json();
+      console.log('✅ Order processed successfully:', result);
+
+      // Clear localStorage
+      localStorage.removeItem('pendingOrder');
+      localStorage.removeItem('checkoutData');
+
+      // Redirect to success page
+      console.log('🎉 Redirecting to success page...');
+      router.push('/nfc/success');
+    } catch (error) {
+      console.error('❌ Error processing order after payment:', error);
+      alert('Payment succeeded but order processing failed. Please contact support with your payment ID: ' + paymentIntentId);
+      setProcessing(false);
+    }
+  };
+
+  // Handle payment error from modal
+  const handleModalPaymentError = (error: string) => {
+    console.error('❌ Stripe payment failed in modal:', error);
+    setShowStripeModal(false);
+    setProcessing(false);
+    alert('Payment failed: ' + error);
   };
 
   if (!orderData) {
@@ -728,94 +873,49 @@ export default function NFCPaymentPage() {
                 </>
               )}
 
-              {/* Card Payment Form */}
+              {/* Card Payment - Stripe Integration */}
               {paymentMethod === 'card' && (
-                <div className="space-y-3 sm:space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Card Number
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={cardNumber}
-                        onChange={handleCardNumberChange}
-                        placeholder="0000 0000 0000 0000"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-sm sm:text-base"
-                      />
-                      <CreditCard className="absolute left-3 top-2.5 sm:top-3.5 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Lock className="w-8 h-8 text-blue-600" />
                     </div>
-                  </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Secure Payment with Stripe
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-6">
+                      Your payment information is encrypted and secure. Click below to proceed to our secure payment form.
+                    </p>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Cardholder Name
-                    </label>
-                    <input
-                      type="text"
-                      value={cardHolder}
-                      onChange={(e) => setCardHolder(e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-sm sm:text-base"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        value={expiryDate}
-                        onChange={handleExpiryChange}
-                        placeholder="MM/YY"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-sm sm:text-base"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        CVC / CVV
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={cvv}
-                          onChange={handleCvvChange}
-                          placeholder="123"
-                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent text-sm sm:text-base"
+                    {/* Card Brand Logos */}
+                    <div className="flex items-center justify-center gap-3 mb-6">
+                      <div className="px-3 py-2 border border-gray-200 rounded bg-white">
+                        <Image
+                          src="/visa.png"
+                          alt="Visa"
+                          width={40}
+                          height={24}
+                          className="h-5 w-auto"
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 sm:gap-3 mt-3">
-                    <div className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200 rounded bg-white">
-                      <Image
-                        src="/visa.png"
-                        alt="Visa"
-                        width={40}
-                        height={24}
-                        className="h-4 sm:h-5 w-auto"
-                      />
-                    </div>
-                    <div className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200 rounded bg-white">
-                      <Image
-                        src="/mc.png"
-                        alt="Mastercard"
-                        width={35}
-                        height={24}
-                        className="h-4 sm:h-5 w-auto"
-                      />
-                    </div>
-                    <div className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200 rounded bg-white">
-                      <Image
-                        src="/amex.png"
-                        alt="American Express"
-                        width={35}
-                        height={24}
-                        className="h-4 sm:h-5 w-auto"
-                      />
+                      <div className="px-3 py-2 border border-gray-200 rounded bg-white">
+                        <Image
+                          src="/mc.png"
+                          alt="Mastercard"
+                          width={35}
+                          height={24}
+                          className="h-5 w-auto"
+                        />
+                      </div>
+                      <div className="px-3 py-2 border border-gray-200 rounded bg-white">
+                        <Image
+                          src="/amex.png"
+                          alt="American Express"
+                          width={35}
+                          height={24}
+                          className="h-5 w-auto"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -882,10 +982,10 @@ export default function NFCPaymentPage() {
               {/* Payment Button */}
               <button
                 onClick={handlePayment}
-                disabled={processing}
-                className="w-full mt-4 sm:mt-6 py-3 sm:py-4 rounded-lg sm:rounded-xl font-semibold text-base sm:text-lg transition-colors disabled:cursor-not-allowed"
+                disabled={processing || !orderData?.orderId}
+                className="w-full mt-4 sm:mt-6 py-3 sm:py-4 rounded-lg sm:rounded-xl font-semibold text-base sm:text-lg transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
-                  backgroundColor: processing ? '#D1D5DB' : '#ff0000',
+                  backgroundColor: (processing || !orderData?.orderId) ? '#D1D5DB' : '#ff0000',
                   color: '#FFFFFF'
                 }}
               >
@@ -894,6 +994,8 @@ export default function NFCPaymentPage() {
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                     Processing...
                   </div>
+                ) : !orderData?.orderId ? (
+                  'Order ID Required'
                 ) : (
                   `Pay $${getFinalAmount().toFixed(2)}`
                 )}
@@ -1129,6 +1231,25 @@ export default function NFCPaymentPage() {
       </div>
 
       <Footer />
+
+      {/* Stripe Payment Modal */}
+      {showStripeModal && stripeClientSecret && (
+        <StripePaymentModal
+          isOpen={showStripeModal}
+          onClose={() => setShowStripeModal(false)}
+          clientSecret={stripeClientSecret}
+          amount={stripePaymentAmount}
+          orderDetails={{
+            customerName: orderData.customerName,
+            email: orderData.email,
+            orderNumber: orderData.orderNumber,
+            voucherCode: appliedVoucherCode || voucherCode,
+            discount: voucherDiscount * 100, // Convert to cents
+          }}
+          onPaymentSuccess={handleModalPaymentSuccess}
+          onPaymentError={handleModalPaymentError}
+        />
+      )}
     </div>
   );
 }

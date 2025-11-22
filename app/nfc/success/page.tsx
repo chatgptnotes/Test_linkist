@@ -38,6 +38,21 @@ export default function SuccessPage() {
   const [profileUrl, setProfileUrl] = useState<string>('');
 
   useEffect(() => {
+    // Disable back button to prevent returning to payment page
+    const disableBackButton = () => {
+      window.history.pushState(null, '', window.location.href);
+      window.addEventListener('popstate', handleBackButton);
+    };
+
+    const handleBackButton = () => {
+      window.history.pushState(null, '', window.location.href);
+      // Optionally redirect to home or dashboard instead
+      // router.push('/');
+    };
+
+    // Initialize back button prevention
+    disableBackButton();
+
     // First check for orderConfirmation from payment page
     const orderConfirmation = localStorage.getItem('orderConfirmation');
     if (orderConfirmation) {
@@ -73,7 +88,12 @@ export default function SuccessPage() {
         }
       }
     }
-  }, []);
+
+    // Cleanup: remove event listener when component unmounts
+    return () => {
+      window.removeEventListener('popstate', handleBackButton);
+    };
+  }, [router]);
 
   // Generate QR Code and profile URL
   useEffect(() => {
@@ -257,7 +277,7 @@ export default function SuccessPage() {
 
               <div className="pt-3 space-y-2">
                 {(() => {
-                  const finalTotal = orderData.pricing?.total || 103.95;
+                  const finalTotal = orderData.pricing?.total || orderData.amount || 0;
                   const voucherPercent = orderData.voucherDiscount || 0;
 
                   // Calculate backwards from final total
@@ -310,7 +330,7 @@ export default function SuccessPage() {
               <div className="flex justify-between items-center pt-3 border-t border-gray-200">
                 <span className="text-gray-700 font-bold">Total Amount</span>
                 <span className="font-bold text-xl text-gray-900">
-                  ${orderData.pricing?.total.toFixed(2) || '103.95'}
+                  ${(orderData.pricing?.total || (orderData as any).amount || 0).toFixed(2)}
                 </span>
               </div>
             </div>

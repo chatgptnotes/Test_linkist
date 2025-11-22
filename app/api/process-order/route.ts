@@ -46,19 +46,24 @@ export async function POST(request: NextRequest) {
     let subtotal, shippingAmount, taxAmount, totalAmount;
 
     if (pricing) {
-      // Use provided pricing (e.g., for digital-only free tier)
+      // Use provided pricing from checkout
       subtotal = pricing.subtotal || 0;
       shippingAmount = pricing.shipping || 0;
       taxAmount = pricing.tax || 0;
       totalAmount = pricing.total || 0;
     } else {
-      // Calculate pricing for physical products
+      // FALLBACK: This should not happen - pricing should always be provided from checkout
+      console.warn('⚠️ [process-order] No pricing provided! Using fallback values (this may be incorrect)');
+      console.warn('⚠️ [process-order] Checkout page should send calculated pricing in the request');
+
+      // Set to 0 as fallback - better than using outdated hardcoded values
       const quantity = cardConfig.quantity || 1;
-      const unitPrice = 29.99;
-      subtotal = unitPrice * quantity;
-      shippingAmount = 5.00;
-      taxAmount = subtotal * 0.0575; // 5.75% tax
-      totalAmount = subtotal + shippingAmount + taxAmount;
+      subtotal = 0;
+      shippingAmount = 0;
+      taxAmount = 0;
+      totalAmount = 0;
+
+      console.error('❌ [process-order] Cannot calculate pricing without pricing data from checkout');
     }
 
     console.log('💰 [process-order] Pricing calculated:', {
