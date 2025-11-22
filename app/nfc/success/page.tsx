@@ -277,20 +277,52 @@ export default function SuccessPage() {
 
               <div className="pt-3 space-y-2">
                 {(() => {
+                  // Use actual pricing data from order instead of backwards calculation
                   const finalTotal = orderData.pricing?.total || orderData.amount || 0;
                   const voucherPercent = orderData.voucherDiscount || 0;
 
-                  // Calculate backwards from final total
-                  // finalTotal = (subtotal + tax) after discount
-                  // If 20% discount: finalTotal = originalAmount * 0.8
-                  // So: originalAmount = finalTotal / (1 - discount/100)
-                  const totalBeforeDiscount = voucherPercent > 0
-                    ? finalTotal / (1 - voucherPercent / 100)
-                    : finalTotal;
+                  // Get actual pricing breakdown from order data
+                  const materialPrice = orderData.pricing?.materialPrice || 0;
+                  const appSubscriptionPrice = orderData.pricing?.appSubscriptionPrice || 0;
+                  const quantity = orderData.cardConfig?.quantity || orderData.quantity || 1;
 
-                  const subtotalBeforeDiscount = totalBeforeDiscount / 1.05;
-                  const taxAmount = subtotalBeforeDiscount * 0.05;
-                  const voucherDiscountAmount = totalBeforeDiscount - finalTotal;
+                  // Calculate subtotal (material + app subscription)
+                  const subtotalBeforeDiscount = (materialPrice * quantity) + (appSubscriptionPrice * quantity);
+
+                  // Get actual tax amount from order data (or calculate if not available)
+                  let taxAmount = orderData.pricing?.taxAmount || orderData.pricing?.tax || 0;
+                  let taxLabel = 'VAT (5%)';
+                  let taxRate = 0.05;
+
+                  // Determine correct tax rate based on country
+                  const country = orderData.shipping?.country || '';
+                  if (country === 'IN' || country === 'India') {
+                    taxRate = 0.18;
+                    taxLabel = 'GST (18%)';
+                    // Recalculate tax if not provided correctly
+                    if (!taxAmount || taxAmount < subtotalBeforeDiscount * 0.15) {
+                      taxAmount = subtotalBeforeDiscount * taxRate;
+                    }
+                  } else if (country === 'AE' || country === 'United Arab Emirates' || country === 'UAE') {
+                    taxRate = 0.05;
+                    taxLabel = 'VAT (5%)';
+                    if (!taxAmount) {
+                      taxAmount = subtotalBeforeDiscount * taxRate;
+                    }
+                  } else {
+                    // Default tax rate for other countries
+                    if (!taxAmount) {
+                      taxAmount = subtotalBeforeDiscount * taxRate;
+                    }
+                  }
+
+                  // Calculate total before discount
+                  const totalBeforeDiscount = subtotalBeforeDiscount + taxAmount;
+
+                  // Calculate voucher discount amount
+                  const voucherDiscountAmount = voucherPercent > 0
+                    ? (totalBeforeDiscount * voucherPercent / 100)
+                    : 0;
 
                   return (
                     <>
@@ -307,7 +339,7 @@ export default function SuccessPage() {
                         <span className="text-green-600">Free</span>
                       </div>
                       <div className="flex justify-between text-gray-600">
-                        <span>VAT (5%)</span>
+                        <span>{taxLabel}</span>
                         <span>${taxAmount.toFixed(2)}</span>
                       </div>
                       {orderData.shipping?.isFounderMember && (

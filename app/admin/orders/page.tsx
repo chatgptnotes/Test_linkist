@@ -58,10 +58,14 @@ interface Order {
   email: string;
   phoneNumber: string;
   cardConfig: {
-    firstName: string;
-    lastName: string;
+    cardFirstName: string;
+    cardLastName: string;
     title?: string;
     quantity?: number;
+    baseMaterial?: string;
+    color?: string;
+    pattern?: number;
+    texture?: string;
   };
   shipping: {
     fullName: string;
@@ -404,7 +408,7 @@ export default function OrdersPage() {
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {order.cardConfig.firstName} {order.cardConfig.lastName}
+                          {order.cardConfig.cardFirstName} {order.cardConfig.cardLastName}
                         </div>
                         <div className="text-sm text-gray-500">
                           {order.cardConfig.title || 'Professional'}
@@ -448,11 +452,24 @@ export default function OrdersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-1">
-                        <DollarSign className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">
-                          {order.pricing.total.toFixed(2)}
-                        </span>
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-1">
+                          <DollarSign className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {order.payment?.amount
+                              ? (order.payment.amount / 100).toFixed(2)
+                              : order.pricing.total.toFixed(2)}
+                          </span>
+                        </div>
+                        {/* Show warning if payment amount doesn't match order total */}
+                        {order.payment?.amount && Math.abs((order.payment.amount / 100) - order.pricing.total) > 1 && (
+                          <div className="flex items-center space-x-1">
+                            <ErrorOutlineIcon className="h-3 w-3 text-amber-500" />
+                            <span className="text-xs text-amber-600" title={`Order total: $${order.pricing.total.toFixed(2)}, Paid: $${(order.payment.amount / 100).toFixed(2)}`}>
+                              Price mismatch
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -591,9 +608,13 @@ export default function OrdersPage() {
               <div className="bg-blue-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 mb-3">Card Configuration</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <p><span className="text-gray-500">Name on Card:</span> {selectedOrder.cardConfig.firstName} {selectedOrder.cardConfig.lastName}</p>
+                  <p><span className="text-gray-500">Name on Card:</span> {selectedOrder.cardConfig.cardFirstName} {selectedOrder.cardConfig.cardLastName}</p>
                   <p><span className="text-gray-500">Title:</span> {selectedOrder.cardConfig.title || 'Professional'}</p>
                   <p><span className="text-gray-500">Quantity:</span> {selectedOrder.cardConfig.quantity || 1}</p>
+                  <p><span className="text-gray-500">Base Material:</span> <span className="capitalize">{selectedOrder.cardConfig.baseMaterial || 'N/A'}</span></p>
+                  <p><span className="text-gray-500">Color:</span> <span className="capitalize">{selectedOrder.cardConfig.color || 'N/A'}</span></p>
+                  <p><span className="text-gray-500">Pattern:</span> {selectedOrder.cardConfig.pattern || 'N/A'}</p>
+                  <p><span className="text-gray-500">Texture:</span> <span className="capitalize">{selectedOrder.cardConfig.texture || 'N/A'}</span></p>
                 </div>
               </div>
 
