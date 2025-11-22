@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Footer from '@/components/Footer';
 import { Country, State, City } from 'country-state-city';
-import { getOrderAmountForVoucher } from '@/lib/pricing-utils';
+import { getOrderAmountForVoucher, calculatePricing } from '@/lib/pricing-utils';
 // PIN verification removed - no longer needed
 
 // Dynamically import MapPicker to avoid SSR issues
@@ -464,50 +464,33 @@ export default function CheckoutPage() {
     }
   }, [selectedState, selectedCountry, setValue, isUpdatingFromMap]);
 
-  const calculatePricing = () => {
-    // Get price based on selected material
-    const materialPrices: Record<string, number> = {
-      pvc: 69,
-      wood: 79,
-      metal: 99,
-      stainless_steel: 99,
-      digital: 19 // Digital Profile + Linkist App price
-    };
-    const materialPrice = cardConfig?.baseMaterial ? materialPrices[cardConfig.baseMaterial] || 69 : 69;
+  const getPricingBreakdown = () => {
+    // Use unified pricing calculation from pricing-utils
+    // FIXED: Don't include app subscription in checkout page display
+    const pricing = calculatePricing({
+      cardConfig: {
+        baseMaterial: (cardConfig?.baseMaterial as any) || 'pvc',
+        quantity: quantity,
+      },
+      country: watchedValues.country || 'US',
+      isFoundingMember: userIsFoundingMember,
+      includeAppSubscription: false, // Don't show subscription on checkout page
+    });
 
-    // Only Material Price (no app subscription shown on checkout page)
-    const productPlanPrice = 0; // Removed
-    const appSubscriptionPrice = 0; // Not shown on checkout page
-    const basePrice = materialPrice; // Only material price
-    const subtotal = basePrice * quantity;
-
-    // Tax logic: 18% GST for India, 5% VAT for others (applied only on physical items, not subscription)
-    const isIndia = watchedValues.country === 'IN';
-    const taxRate = isIndia ? 0.18 : 0.05;
-    const taxableAmount = basePrice * quantity; // Tax only on material price
-    const taxAmount = taxableAmount * taxRate;
-
-    // Shipping is included in base price (no additional cost)
-    const shippingCost = 0;
-    const totalBeforeDiscount = subtotal + taxAmount + shippingCost;
-
-    // No voucher discount on checkout page - vouchers only apply on payment page
-    const discountAmount = 0;
-    const total = totalBeforeDiscount;
-
+    // Return in format expected by component
     return {
-      productPlanPrice,
-      materialPrice,
-      appSubscriptionPrice,
-      basePrice,
-      subtotal,
-      taxAmount,
-      shippingCost,
-      totalBeforeDiscount,
-      discountAmount,
-      total,
-      taxRate,
-      taxLabel: isIndia ? 'GST (18%)' : 'VAT (5%)'
+      productPlanPrice: 0,
+      materialPrice: pricing.materialPrice,
+      appSubscriptionPrice: 0, // Don't show subscription here
+      basePrice: pricing.materialPrice,
+      subtotal: pricing.subtotal,
+      taxAmount: pricing.taxAmount,
+      shippingCost: pricing.shippingCost,
+      totalBeforeDiscount: pricing.subtotal + pricing.taxAmount, // Only material + tax
+      discountAmount: 0,
+      total: pricing.subtotal + pricing.taxAmount, // Only material + tax
+      taxRate: pricing.taxRate,
+      taxLabel: watchedValues.country === 'IN' ? 'GST (18%)' : 'VAT (5%)'
     };
   };
 
@@ -583,7 +566,7 @@ export default function CheckoutPage() {
     return 'text-gray-900';
   };
 
-  const pricing = calculatePricing();
+  const pricing = getPricingBreakdown();
 
   // Handle address update from map
   const handleMapAddressChange = (addressData: any) => {
@@ -815,6 +798,18 @@ export default function CheckoutPage() {
       localStorage.setItem('userContactData', JSON.stringify(userContactData));
       console.log('💾 Checkout: Saved user contact data to localStorage:', userContactData);
 
+      // FIXED: Calculate full pricing WITH subscription for payment page
+      // (even though checkout page only displays material + tax)
+      const fullPricing = calculatePricing({
+        cardConfig: {
+          baseMaterial: (cardConfig?.baseMaterial as any) || 'pvc',
+          quantity: quantity,
+        },
+        country: formData.country || 'US',
+        isFoundingMember: userIsFoundingMember,
+        includeAppSubscription: true, // Include subscription for payment page
+      });
+
       // Prepare order data for API
       const orderPayload = {
         customerName: `${formData.firstName} ${formData.lastName}`,
@@ -841,18 +836,18 @@ export default function CheckoutPage() {
           area: gpsCoordinates.area
         },
         pricing: {
-          productPlanPrice: pricing.productPlanPrice,
-          materialPrice: pricing.materialPrice,
-          appSubscriptionPrice: APP_SUBSCRIPTION_PRICE, // Send actual subscription price to payment page
-          basePrice: pricing.basePrice,
-          subtotal: pricing.subtotal,
-          shippingCost: pricing.shippingCost,
-          taxAmount: pricing.taxAmount,
-          totalBeforeDiscount: pricing.totalBeforeDiscount,
+          productPlanPrice: 0,
+          materialPrice: fullPricing.materialPrice,
+          appSubscriptionPrice: fullPricing.appSubscriptionPrice, // Include subscription for payment page
+          basePrice: fullPricing.materialPrice,
+          subtotal: fullPricing.subtotal,
+          shippingCost: fullPricing.shippingCost,
+          taxAmount: fullPricing.taxAmount, // Tax only on material price
+          totalBeforeDiscount: fullPricing.totalBeforeDiscount,
           discountAmount: 0, // No discount on checkout
-          total: pricing.total,
-          taxRate: pricing.taxRate,
-          taxLabel: pricing.taxLabel,
+          total: fullPricing.totalBeforeDiscount, // Full price with subscription for payment page
+          taxRate: fullPricing.taxRate,
+          taxLabel: formData.country === 'IN' ? 'GST (18%)' : 'VAT (5%)',
           voucherCode: null, // Payment page handles vouchers
           voucherDiscount: 0 // Payment page handles vouchers
         },
