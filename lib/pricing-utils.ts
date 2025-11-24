@@ -90,9 +90,9 @@ export function calculatePricing(options: CalculatePricingOptions): PricingBreak
   // Get tax rate for country
   const taxRate = TAX_RATES[country] || DEFAULT_TAX_RATE;
 
-  // Calculate tax (on material + app subscription)
-  const taxableAmount = subtotal + appSubscriptionPrice;
-  const taxAmount = taxableAmount * taxRate;
+  // FIXED: Calculate tax ONLY on material price (base price), NOT on subscription
+  // Tax should only apply to the physical product, not the digital subscription
+  const taxAmount = subtotal * taxRate;
 
   // Shipping cost
   const shippingCost = SHIPPING_COST;
@@ -101,7 +101,7 @@ export function calculatePricing(options: CalculatePricingOptions): PricingBreak
   const totalBeforeDiscount = subtotal + appSubscriptionPrice + taxAmount + shippingCost;
 
   // Total without app subscription (for voucher validation consistency)
-  const totalWithoutAppSubscription = subtotal + (subtotal * taxRate) + shippingCost;
+  const totalWithoutAppSubscription = subtotal + taxAmount + shippingCost;
 
   return {
     materialPrice,

@@ -6,6 +6,7 @@ import { SupabaseShippingAddressStore } from '@/lib/supabase-shipping-address-st
 import { formatOrderForEmail } from '@/lib/order-store';
 import { emailService } from '@/lib/email-service';
 import { createClient } from '@/lib/supabase/client';
+import { calculatePricing } from '@/lib/pricing-utils';
 
 export async function POST(request: NextRequest) {
   console.log('🚀 [process-order] API called');
@@ -73,6 +74,45 @@ export async function POST(request: NextRequest) {
       totalAmount,
       providedPricing: !!pricing
     });
+
+    // VALIDATION: Check if pricing looks suspiciously low (might be missing app subscription)
+    // For physical cards (non-digital), total should be at least material price + tax
+    // App subscription ($120) should be included unless user is founding member
+    const MIN_EXPECTED_TOTAL = 50; // Minimum threshold to catch obvious errors
+
+    if (cardConfig.baseMaterial !== 'digital' && totalAmount > 0 && totalAmount < MIN_EXPECTED_TOTAL) {
+      console.warn('⚠️ [process-order] PRICING VALIDATION WARNING: Total amount seems suspiciously low');
+      console.warn('⚠️ [process-order] This might indicate missing app subscription fee');
+      console.warn('⚠️ [process-order] Provided pricing:', { subtotal, taxAmount, totalAmount });
+
+      // Attempt to recalculate using unified pricing utility as a sanity check
+      try {
+        const recalculated = calculatePricing({
+          cardConfig: {
+            baseMaterial: cardConfig.baseMaterial,
+            quantity: cardConfig.quantity || 1,
+          },
+          country: checkoutData.country || 'US',
+          isFoundingMember: false, // Assume not founding member for validation
+          includeAppSubscription: true,
+        });
+
+        console.warn('⚠️ [process-order] Recalculated pricing (with app subscription):', {
+          materialPrice: recalculated.materialPrice,
+          appSubscriptionPrice: recalculated.appSubscriptionPrice,
+          taxAmount: recalculated.taxAmount,
+          totalBeforeDiscount: recalculated.totalBeforeDiscount,
+        });
+
+        // Log the discrepancy for admin review
+        console.error('🚨 [process-order] PRICING MISMATCH DETECTED!');
+        console.error('🚨 Received total:', totalAmount);
+        console.error('🚨 Expected total (non-founding):', recalculated.totalBeforeDiscount);
+        console.error('🚨 Difference:', Math.abs(totalAmount - recalculated.totalBeforeDiscount));
+      } catch (validationError) {
+        console.error('❌ [process-order] Error during pricing validation:', validationError);
+      }
+    }
 
     // Create/update user in database
     console.log('👤 [process-order] Creating/updating user in database...');
@@ -143,6 +183,25 @@ export async function POST(request: NextRequest) {
         updateData.paymentId = paymentData.paymentId;
         updateData.voucherCode = paymentData.voucherCode || null;
         updateData.voucherDiscount = paymentData.voucherDiscount || 0;
+
+        // FIXED: Update pricing.total to reflect the final amount paid (after voucher discount)
+        if (paymentData.voucherAmount && paymentData.voucherAmount > 0) {
+          const originalTotal = existingOrder.pricing?.total || 0;
+          const finalTotal = Math.max(0, originalTotal - paymentData.voucherAmount);
+
+          updateData.pricing = {
+            ...existingOrder.pricing,
+            totalBeforeDiscount: originalTotal, // Save original total for reference
+            total: finalTotal, // Update to actual amount paid
+            voucherAmount: paymentData.voucherAmount, // Save voucher discount amount
+          };
+
+          console.log('💰 [process-order] Updating pricing with voucher discount:', {
+            originalTotal,
+            voucherAmount: paymentData.voucherAmount,
+            finalTotal,
+          });
+        }
       }
 
       // Update using the UUID from the existing order

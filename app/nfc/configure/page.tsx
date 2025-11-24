@@ -37,6 +37,7 @@ interface PriceSummary {
   currency: string;
   productPlanPrice: number;
   materialPrice: number;
+  appSubscriptionPrice?: number;
   basePrice: number;
   customization: number;
   taxLabel: string;
@@ -206,9 +207,8 @@ export default function ConfigureNewPage() {
     const materialPrice = getPrice();
     if (!materialPrice) return null;
 
-    // Only Material Price (no product plan price)
-    const productPlanPrice = PRODUCT_PLAN_PRICE;
-    const basePrice = materialPrice; // Only material price
+    // FIXED: Tax should only be calculated on material price, NOT subscription
+    const basePrice = materialPrice;
 
     // Region-based tax rates
     let taxRate = 0.10; // Default 10%
@@ -222,15 +222,17 @@ export default function ConfigureNewPage() {
       taxLabel = 'VAT (5%)';
     }
 
+    // FIXED: Tax calculated ONLY on material price (base price)
     const taxAmount = basePrice * taxRate;
 
-    // Shipping is included in base price
+    // Total for configure page: material + tax only (subscription shown on payment page)
     const total = basePrice + taxAmount;
 
     return {
       currency: '$',
-      productPlanPrice,
+      productPlanPrice: PRODUCT_PLAN_PRICE,
       materialPrice,
+      appSubscriptionPrice: undefined, // Don't show subscription here
       basePrice,
       customization: 0,
       taxLabel,

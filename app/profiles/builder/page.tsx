@@ -338,8 +338,8 @@ function ProfileBuilderContent() {
   const skillDropdownRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [mobileCountryCode, setMobileCountryCode] = useState('+971');
-  const [whatsappCountryCode, setWhatsappCountryCode] = useState('+971');
+  const [mobileCountryCode, setMobileCountryCode] = useState('+91'); // FIXED: Default to India
+  const [whatsappCountryCode, setWhatsappCountryCode] = useState('+91'); // FIXED: Default to India
   const [useSameNumberForWhatsapp, setUseSameNumberForWhatsapp] = useState(false);
   const [showJobTitleDropdown, setShowJobTitleDropdown] = useState(false);
   const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
@@ -2088,18 +2088,8 @@ function ProfileBuilderContent() {
                               type="tel"
                               value={profileData.mobileNumber}
                               onChange={(e) => {
-                                // Auto-detect country code if user types full number with code
-                                const inputValue = e.target.value;
-                                const detected = detectCountryCodeFromNumber(inputValue);
-
-                                // If country code was detected, update dropdown and show only number part
-                                if (detected.countryCode && detected.number) {
-                                  setMobileCountryCode(detected.countryCode);
-                                  setProfileData({ ...profileData, mobileNumber: detected.number });
-                                } else {
-                                  // Otherwise just store what user typed
-                                  setProfileData({ ...profileData, mobileNumber: inputValue });
-                                }
+                                // FIXED: Just store the number, respect dropdown selection
+                                setProfileData({ ...profileData, mobileNumber: e.target.value });
                               }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
                               placeholder="8999355932"
@@ -2157,18 +2147,8 @@ function ProfileBuilderContent() {
                               type="tel"
                               value={profileData.whatsappNumber}
                               onChange={(e) => {
-                                // Auto-detect country code if user types full number with code
-                                const inputValue = e.target.value;
-                                const detected = detectCountryCodeFromNumber(inputValue);
-
-                                // If country code was detected, update dropdown and show only number part
-                                if (detected.countryCode && detected.number) {
-                                  setWhatsappCountryCode(detected.countryCode);
-                                  setProfileData({ ...profileData, whatsappNumber: detected.number });
-                                } else {
-                                  // Otherwise just store what user typed
-                                  setProfileData({ ...profileData, whatsappNumber: inputValue });
-                                }
+                                // FIXED: Just store the number, respect dropdown selection
+                                setProfileData({ ...profileData, whatsappNumber: e.target.value });
                               }}
                               disabled={useSameNumberForWhatsapp}
                               className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none ${useSameNumberForWhatsapp ? 'bg-gray-100 cursor-not-allowed' : ''}`}

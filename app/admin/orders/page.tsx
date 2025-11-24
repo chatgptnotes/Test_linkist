@@ -58,10 +58,14 @@ interface Order {
   email: string;
   phoneNumber: string;
   cardConfig: {
-    firstName: string;
-    lastName: string;
+    cardFirstName: string;
+    cardLastName: string;
     title?: string;
     quantity?: number;
+    baseMaterial?: string;
+    color?: string;
+    pattern?: number;
+    texture?: string;
   };
   shipping: {
     fullName: string;
@@ -402,12 +406,34 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div>
+                      <div className="space-y-1">
                         <div className="text-sm font-medium text-gray-900">
-                          {order.cardConfig.firstName} {order.cardConfig.lastName}
+                          {order.cardConfig.cardFirstName} {order.cardConfig.cardLastName}
                         </div>
                         <div className="text-sm text-gray-500">
                           {order.cardConfig.title || 'Professional'}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {order.cardConfig.baseMaterial && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 capitalize">
+                              {order.cardConfig.baseMaterial}
+                            </span>
+                          )}
+                          {order.cardConfig.color && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                              {order.cardConfig.color}
+                            </span>
+                          )}
+                          {order.cardConfig.texture && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 capitalize">
+                              {order.cardConfig.texture}
+                            </span>
+                          )}
+                          {order.cardConfig.pattern && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                              Pattern {order.cardConfig.pattern}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -448,11 +474,24 @@ export default function OrdersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-1">
-                        <DollarSign className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">
-                          {order.pricing.total.toFixed(2)}
-                        </span>
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-1">
+                          <DollarSign className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {order.payment?.amount
+                              ? (order.payment.amount / 100).toFixed(2)
+                              : order.pricing.total.toFixed(2)}
+                          </span>
+                        </div>
+                        {/* Show warning if payment amount doesn't match order total */}
+                        {order.payment?.amount && Math.abs((order.payment.amount / 100) - order.pricing.total) > 1 && (
+                          <div className="flex items-center space-x-1">
+                            <ErrorOutlineIcon className="h-3 w-3 text-amber-500" />
+                            <span className="text-xs text-amber-600" title={`Order total: $${order.pricing.total.toFixed(2)}, Paid: $${(order.payment.amount / 100).toFixed(2)}`}>
+                              Price mismatch
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -588,12 +627,40 @@ export default function OrdersPage() {
               </div>
 
               {/* Card Configuration */}
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Card Configuration</h4>
+              <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+                <h4 className="font-semibold text-gray-900 mb-4 text-base flex items-center gap-2">
+                  <span className="text-blue-600">📋</span>
+                  Manufacturing Specifications
+                </h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <p><span className="text-gray-500">Name on Card:</span> {selectedOrder.cardConfig.firstName} {selectedOrder.cardConfig.lastName}</p>
-                  <p><span className="text-gray-500">Title:</span> {selectedOrder.cardConfig.title || 'Professional'}</p>
-                  <p><span className="text-gray-500">Quantity:</span> {selectedOrder.cardConfig.quantity || 1}</p>
+                  <div className="col-span-2 bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-gray-500 mb-1">Name on Card</p>
+                    <p className="font-semibold text-gray-900">{selectedOrder.cardConfig.cardFirstName} {selectedOrder.cardConfig.cardLastName}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-gray-500 mb-1">Title</p>
+                    <p className="font-medium text-gray-900">{selectedOrder.cardConfig.title || 'Professional'}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-gray-500 mb-1">Quantity</p>
+                    <p className="font-medium text-gray-900">{selectedOrder.cardConfig.quantity || 1}</p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                    <p className="text-xs text-gray-500 mb-1">Base Material</p>
+                    <p className="font-semibold text-purple-900 capitalize">{selectedOrder.cardConfig.baseMaterial || 'N/A'}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <p className="text-xs text-gray-500 mb-1">Color</p>
+                    <p className="font-semibold text-blue-900 capitalize">{selectedOrder.cardConfig.color || 'N/A'}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <p className="text-xs text-gray-500 mb-1">Texture</p>
+                    <p className="font-semibold text-green-900 capitalize">{selectedOrder.cardConfig.texture || 'N/A'}</p>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                    <p className="text-xs text-gray-500 mb-1">Pattern</p>
+                    <p className="font-semibold text-orange-900">{selectedOrder.cardConfig.pattern ? `Pattern ${selectedOrder.cardConfig.pattern}` : 'N/A'}</p>
+                  </div>
                 </div>
               </div>
 
