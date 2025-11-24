@@ -24,7 +24,8 @@ import {
   QrCode2,
   CloudDownload,
   PersonAdd,
-  WhatsApp
+  WhatsApp,
+  Share as ShareIcon
 } from '@mui/icons-material';
 
 // Currency symbols mapping
@@ -118,6 +119,7 @@ export default function ProfilePreviewPage() {
   const [copied, setCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [showQrCode, setShowQrCode] = useState(false);
+  const [showShareSection, setShowShareSection] = useState(false);
 
   useEffect(() => {
     // Set custom URL based on username from URL params
@@ -474,6 +476,63 @@ export default function ProfilePreviewPage() {
                 </div>
               )}
             </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-6 sm:my-8"></div>
+
+            {/* Share Button */}
+            <div className="mb-6">
+              <button
+                onClick={() => setShowShareSection(!showShareSection)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md"
+                style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+              >
+                <ShareIcon className="w-5 h-5" />
+                Share Profile
+              </button>
+            </div>
+
+            {/* Share Section - Compact Layout */}
+            {showShareSection && (
+              <div className="mb-6 sm:mb-8">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-semibold text-gray-900">Your Profile URL</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowQrCode(true)}
+                        className="flex-shrink-0 p-2 bg-white border border-blue-300 text-blue-600 rounded hover:bg-blue-50 transition"
+                        title="Show QR Code"
+                      >
+                        <QrCode2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={handleCopyUrl}
+                        className="flex-shrink-0 p-2 bg-white border border-blue-300 text-blue-600 rounded hover:bg-blue-50 transition"
+                        title="Copy URL"
+                      >
+                        {copied ? (
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ContentCopy className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <a
+                    href={customUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium break-all block"
+                  >
+                    {customUrl}
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-6 sm:my-8"></div>
