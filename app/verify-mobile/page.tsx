@@ -28,6 +28,7 @@ function VerifyMobileContent() {
   const [otpSent, setOtpSent] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [devOtp, setDevOtp] = useState<string | null>(null); // Store dev OTP for display
+  const [emailVerifyLoading, setEmailVerifyLoading] = useState(false); // Loading state for email verification
   const otpRequestInProgress = useRef(false);
 
   useEffect(() => {
@@ -436,14 +437,62 @@ function VerifyMobileContent() {
           {/* Verify Email Instead */}
           <div className="mt-6 pt-6 border-t border-gray-200">
             <button
-              onClick={() => {
+              onClick={async () => {
                 // Get user email from profile
-                const userProfile = localStorage.getItem('userProfile');
-                if (userProfile) {
+                const userProfileStr = localStorage.getItem('userProfile');
+                if (userProfileStr) {
                   try {
-                    const profile = JSON.parse(userProfile);
-                    if (profile.email) {
-                      // Redirect to email verification with email as parameter
+                    const profile = JSON.parse(userProfileStr);
+
+                    // Check if this is a registration flow (has firstName/lastName)
+                    if (profile.firstName && profile.lastName && profile.email) {
+                      // Registration flow - send OTP with registration data
+                      setEmailVerifyLoading(true);
+                      try {
+                        const response = await fetch('/api/send-otp', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            email: profile.email,
+                            firstName: profile.firstName,
+                            lastName: profile.lastName
+                          }),
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                          // Store registration data for verify-register page
+                          localStorage.setItem('registrationData', JSON.stringify({
+                            firstName: profile.firstName,
+                            lastName: profile.lastName,
+                            email: profile.email,
+                            mobile: phone || '',
+                            password: profile.password || '',
+                            registrationType: 'email'
+                          }));
+
+                          // Show dev OTP if available
+                          if (data.devOtp) {
+                            alert(`Your verification code is: ${data.devOtp}`);
+                          }
+
+                          setToast({ message: 'Verification code sent to your email!', type: 'success' });
+
+                          // Navigate to registration verification page
+                          router.push('/verify-register');
+                        } else {
+                          // Show error toast
+                          setToast({ message: data.error || 'Failed to send verification code', type: 'error' });
+                        }
+                      } catch (error) {
+                        console.error('Error sending email OTP:', error);
+                        setToast({ message: 'Failed to send verification code', type: 'error' });
+                      } finally {
+                        setEmailVerifyLoading(false);
+                      }
+                    } else if (profile.email) {
+                      // Login flow - no firstName/lastName, just email
                       router.push(`/verify-login?email=${encodeURIComponent(profile.email)}`);
                     } else {
                       router.push('/verify-login');
@@ -455,10 +504,18 @@ function VerifyMobileContent() {
                   router.push('/verify-login');
                 }
               }}
-              className="w-full text-sm sm:text-base font-semibold px-6 py-3 rounded-xl transition-colors shadow-md hover:shadow-lg cursor-pointer"
-              style={{ backgroundColor: '#DC2626', color: '#FFFFFF' }}
+              disabled={emailVerifyLoading}
+              className="w-full text-sm sm:text-base font-semibold px-6 py-3 rounded-xl transition-colors shadow-md hover:shadow-lg cursor-pointer disabled:cursor-not-allowed"
+              style={{ backgroundColor: emailVerifyLoading ? '#9CA3AF' : '#DC2626', color: '#FFFFFF' }}
             >
-              Verify Email Instead
+              {emailVerifyLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                  Sending Code...
+                </div>
+              ) : (
+                'Verify Email Instead'
+              )}
             </button>
           </div>
 

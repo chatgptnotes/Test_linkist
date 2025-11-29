@@ -60,10 +60,10 @@ export default function VerifyRegisterPage() {
         showToast('Account created successfully!', 'success');
         // Clear registration data from localStorage
         localStorage.removeItem('registrationData');
-        // Mark as new user for onboarding
-        localStorage.removeItem('userOnboarded');
-        // Redirect to welcome page for first-time users
-        router.push('/welcome-to-linkist');
+        // Mark email as verified
+        localStorage.setItem('emailVerified', 'true');
+        // Redirect to product selection for new users (same as mobile verification)
+        router.push('/product-selection');
       } else {
         showToast(data.error || 'Invalid verification code', 'error');
       }
@@ -173,11 +173,11 @@ export default function VerifyRegisterPage() {
               <button
                 type="submit"
                 disabled={loading || otp.length !== 6}
-                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                  loading || otp.length !== 6
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                }`}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: loading || otp.length !== 6 ? '#9CA3AF' : '#DC2626',
+                  color: '#FFFFFF'
+                }}
               >
                 {loading ? (
                   <div className="flex items-center">
