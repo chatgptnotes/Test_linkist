@@ -107,6 +107,7 @@ interface ProfileData {
     title: string;
     description?: string;
     pricing: string;
+    pricingUnit?: string;
     currency?: string;
     category: string;
     showPublicly?: boolean;
@@ -805,7 +806,7 @@ export default function ProfilePreviewPage() {
                       <div className="flex-shrink-0 text-right">
                         <p className="text-sm sm:text-base text-gray-600">
                           {CURRENCIES.find(c => c.code === (service.currency || 'USD'))?.symbol || '$'}
-                          {service.pricing}
+                          {service.pricing}{service.pricingUnit || ''}
                         </p>
                       </div>
                     </div>

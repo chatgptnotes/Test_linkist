@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
             title: service.title,
             description: service.description || '',
             pricing: service.pricing || '',
+            pricingUnit: service.pricing_unit || '',
             category: service.category || '',
             currency: service.currency || 'USD',
             showPublicly: service.is_active

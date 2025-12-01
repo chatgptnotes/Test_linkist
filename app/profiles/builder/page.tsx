@@ -124,7 +124,7 @@ interface ProfileData {
   certifications: Array<{ id: string; name: string; title: string; url: string; size: number; type: string; showPublicly: boolean }>;
 
   // Services
-  services: Array<{ id: string; title: string; description: string; pricing: string; currency: string; category: string; showPublicly: boolean }>;
+  services: Array<{ id: string; title: string; description: string; pricing: string; pricingUnit: string; currency: string; category: string; showPublicly: boolean }>;
 }
 
 // Job title options with categories
@@ -415,6 +415,7 @@ function ProfileBuilderContent() {
       title: '',
       description: '',
       pricing: '',
+      pricingUnit: '',
       currency: 'USD',
       category: '',
       showPublicly: true
@@ -999,6 +1000,7 @@ function ProfileBuilderContent() {
                       title: '',
                       description: '',
                       pricing: '',
+                      pricingUnit: '',
                       currency: 'USD',
                       category: '',
                       showPublicly: true
@@ -1261,6 +1263,7 @@ function ProfileBuilderContent() {
                   title: '',
                   description: '',
                   pricing: '',
+                  pricingUnit: '',
                   currency: 'USD',
                   category: '',
                   showPublicly: true
@@ -2812,6 +2815,7 @@ function ProfileBuilderContent() {
                             title: '',
                             description: '',
                             pricing: '',
+                            pricingUnit: '',
                             currency: defaultCurrency,
                             category: '',
                             showPublicly: true
@@ -2841,6 +2845,7 @@ function ProfileBuilderContent() {
                                       title: '',
                                       description: '',
                                       pricing: '',
+                                      pricingUnit: '',
                                       currency: defaultCurrency,
                                       category: '',
                                       showPublicly: true
@@ -2910,7 +2915,7 @@ function ProfileBuilderContent() {
                               </div>
 
                               {/* Service Pricing & Currency */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                                 {/* Currency Dropdown */}
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2935,7 +2940,7 @@ function ProfileBuilderContent() {
                                 </div>
 
                                 {/* Pricing Input */}
-                                <div className="sm:col-span-2">
+                                <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Pricing *
                                   </label>
@@ -2943,9 +2948,9 @@ function ProfileBuilderContent() {
                                     type="text"
                                     value={service.pricing}
                                     onChange={(e) => {
-                                      // Only allow numbers and specific characters for pricing (/, -, space)
+                                      // Only allow numbers, decimals, dashes for ranges
                                       const value = e.target.value;
-                                      const allowedPattern = /^[0-9\/\-\s]*$/;
+                                      const allowedPattern = /^[0-9.\-\s]*$/;
                                       if (allowedPattern.test(value) || value === '') {
                                         const updatedServices = profileData.services.map(s =>
                                           s.id === service.id ? { ...s, pricing: value } : s
@@ -2954,8 +2959,33 @@ function ProfileBuilderContent() {
                                       }
                                     }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                                    placeholder={`e.g., 100/hour, 35/hrm, 50-100`}
+                                    placeholder="e.g., 100, 50-100"
                                   />
+                                </div>
+
+                                {/* Pricing Unit Dropdown */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Per
+                                  </label>
+                                  <select
+                                    value={service.pricingUnit || ''}
+                                    onChange={(e) => {
+                                      const updatedServices = profileData.services.map(s =>
+                                        s.id === service.id ? { ...s, pricingUnit: e.target.value } : s
+                                      );
+                                      setProfileData({ ...profileData, services: updatedServices });
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white"
+                                  >
+                                    <option value="">Fixed Price</option>
+                                    <option value="/hour">Per Hour</option>
+                                    <option value="/day">Per Day</option>
+                                    <option value="/week">Per Week</option>
+                                    <option value="/month">Per Month</option>
+                                    <option value="/project">Per Project</option>
+                                    <option value="/session">Per Session</option>
+                                  </select>
                                 </div>
                               </div>
 

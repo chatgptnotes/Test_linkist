@@ -88,6 +88,7 @@ export async function GET(
         title: service.title,
         description: service.description || '',
         pricing: service.pricing || '',
+        pricingUnit: service.pricing_unit || '',
         category: service.category || '',
         currency: service.currency || 'USD',
         showPublicly: true // Only active services are fetched

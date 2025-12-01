@@ -103,7 +103,7 @@ interface ProfileData {
   showProfilePhoto: boolean;
   showBackgroundImage: boolean;
   // Services
-  services?: Array<{ id: string; title: string; description: string; pricing: string; currency?: string; category: string; showPublicly?: boolean }>;
+  services?: Array<{ id: string; title: string; description: string; pricing: string; pricingUnit?: string; currency?: string; category: string; showPublicly?: boolean }>;
   // Certifications
   certifications?: Array<{ id: string; name: string; title: string; url: string; size: number; type: string; showPublicly: boolean }>;
 }
@@ -480,15 +480,23 @@ export default function ProfilePreviewPage() {
             {/* Divider */}
             <div className="border-t border-gray-200 my-6 sm:my-8"></div>
 
-            {/* Share Button */}
-            <div className="mb-6">
+            {/* Share and Add to Contacts Buttons */}
+            <div className="mb-6 flex flex-row gap-3">
               <button
                 onClick={() => setShowShareSection(!showShareSection)}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md"
                 style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
               >
                 <ShareIcon className="w-5 h-5" />
-                Share Profile
+                Share
+              </button>
+              <button
+                onClick={handleSaveToContacts}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md"
+                style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+              >
+                <PersonAdd className="w-5 h-5" />
+                Add to Contacts
               </button>
             </div>
 
@@ -673,16 +681,6 @@ export default function ProfilePreviewPage() {
               </div>
             )}
 
-            {/* Save to Contacts Button - Mobile & Tablet Only */}
-            <button
-              onClick={handleSaveToContacts}
-              className="w-full mt-6 mb-8 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md relative z-10"
-              style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
-            >
-              <PersonAdd className="w-5 h-5" />
-              Save to Contacts
-            </button>
-
             {/* Social Media Links */}
             {(profileData.showLinkedin || profileData.showInstagram || profileData.showFacebook ||
               profileData.showTwitter || profileData.showBehance || profileData.showDribbble ||
@@ -814,7 +812,7 @@ export default function ProfilePreviewPage() {
                             <span className="text-xs text-gray-500">Pricing</span>
                             <span className="text-sm font-semibold text-red-600">
                               {CURRENCIES.find(c => c.code === (service.currency || 'USD'))?.symbol || '$'}
-                              {service.pricing}
+                              {service.pricing}{service.pricingUnit || ''}
                             </span>
                           </div>
                         )}

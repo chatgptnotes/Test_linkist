@@ -279,6 +279,7 @@ export async function POST(request: NextRequest) {
             title: service.title,
             description: service.description || '',
             pricing: service.pricing || '',
+            pricing_unit: service.pricingUnit || '',
             category: service.category || '',
             currency: service.currency || 'USD',
             is_active: service.showPublicly !== false,
