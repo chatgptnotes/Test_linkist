@@ -420,7 +420,7 @@ export default function ProfilePreviewPage() {
       </div>
 
       {/* Profile Card */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="max-w-3xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Background Image */}
           {profileData.showBackgroundImage && profileData.backgroundImage ? (
@@ -431,7 +431,7 @@ export default function ProfilePreviewPage() {
             <div className="h-24 sm:h-32 bg-gradient-to-r from-purple-600 via-blue-500 to-teal-400"></div>
           )}
 
-          <div className="px-6 sm:px-8 pb-8">
+          <div className="px-4 sm:px-6 pb-8">
             {/* Profile Section */}
             <div className="flex items-start gap-4 sm:gap-6 -mt-12 sm:-mt-16">
               {/* Left Column - Profile Photo & Info */}

@@ -1170,9 +1170,20 @@ export default function CheckoutPage() {
                             setAvailableStates(states);
                             setSelectedState('');
                             setSelectedCity('');
-                            setAvailableCities([]);
                             setValue('stateProvince', '');
                             setValue('city', '');
+
+                            // For UAE, use Emirates as cities directly (UAE has no state/province level)
+                            if (countryCode === 'AE') {
+                              const emiratesAsCities = states.map(state => ({
+                                name: state.name.replace(' Emirate', ''),
+                                stateCode: state.isoCode,
+                                countryCode: state.countryCode
+                              }));
+                              setAvailableCities(emiratesAsCities as any);
+                            } else {
+                              setAvailableCities([]);
+                            }
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
