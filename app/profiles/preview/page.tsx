@@ -52,6 +52,7 @@ const CURRENCIES = [
 ];
 
 interface ProfileData {
+  salutation: string;
   firstName: string;
   lastName: string;
   primaryEmail: string;
@@ -194,6 +195,7 @@ export default function ProfilePreviewPage() {
 
           // Map database profile to preview format
           const mappedProfile: ProfileData = {
+            salutation: dbProfile.preferences?.salutation || '',
             firstName: dbProfile.first_name || '',
             lastName: dbProfile.last_name || '',
             primaryEmail: dbProfile.email || '',
@@ -473,7 +475,7 @@ export default function ProfilePreviewPage() {
 
                 {/* Name */}
                 <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 capitalize">
-                  {profileData.firstName} {profileData.lastName}
+                  {profileData.salutation && `${profileData.salutation} `}{profileData.firstName} {profileData.lastName}
                 </h1>
                  {/* Job Title */}
                  {profileData.showJobTitle && profileData.jobTitle && (

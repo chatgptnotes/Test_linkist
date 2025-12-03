@@ -53,6 +53,7 @@ const CURRENCIES = [
 ];
 
 interface ProfileData {
+  salutation: string;
   firstName: string;
   lastName: string;
   primaryEmail: string;
@@ -152,6 +153,7 @@ export default function ProfilePreviewPage() {
           const prefs = dbProfile.preferences || {};
 
           const mappedProfile: ProfileData = {
+            salutation: prefs.salutation || '',
             firstName: dbProfile.firstName || '',
             lastName: dbProfile.lastName || '',
             primaryEmail: dbProfile.email || '',
@@ -298,11 +300,14 @@ export default function ProfilePreviewPage() {
     if (!profileData) return;
 
     // Create vCard format (v3.0 for maximum compatibility)
+    const fullName = profileData.salutation
+      ? `${profileData.salutation} ${profileData.firstName} ${profileData.lastName}`
+      : `${profileData.firstName} ${profileData.lastName}`;
     const vCard = [
       'BEGIN:VCARD',
       'VERSION:3.0',
-      `FN:${profileData.firstName} ${profileData.lastName}`,
-      `N:${profileData.lastName};${profileData.firstName};;;`,
+      `FN:${fullName}`,
+      `N:${profileData.lastName};${profileData.firstName};;${profileData.salutation || ''};`,
       profileData.jobTitle && profileData.showJobTitle ? `TITLE:${profileData.jobTitle}` : '',
       profileData.companyName && profileData.showCompanyName ? `ORG:${profileData.companyName}` : '',
       profileData.primaryEmail && profileData.showEmailPublicly ? `EMAIL;TYPE=INTERNET:${profileData.primaryEmail}` : '',
@@ -447,7 +452,7 @@ export default function ProfilePreviewPage() {
 
                 {/* Name */}
                 <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 capitalize">
-                  {profileData.firstName} {profileData.lastName}
+                  {profileData.salutation && `${profileData.salutation} `}{profileData.firstName} {profileData.lastName}
                 </h1>
                  {/* Job Title */}
                  {profileData.showJobTitle && profileData.jobTitle && (

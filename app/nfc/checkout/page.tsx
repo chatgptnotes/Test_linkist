@@ -435,9 +435,20 @@ export default function CheckoutPage() {
       setAvailableStates(states);
       setSelectedState(''); // Reset state when country changes
       setSelectedCity(''); // Reset city when country changes
-      setAvailableCities([]);
       setValue('stateProvince', ''); // Update form value
       setValue('city', ''); // Update form value
+
+      // For UAE, use Emirates as cities directly (UAE has no state/province level)
+      if (selectedCountry === 'AE') {
+        const emiratesAsCities = states.map(state => ({
+          name: state.name.replace(' Emirate', ''), // "Abu Dhabi Emirate" → "Abu Dhabi"
+          stateCode: state.isoCode,
+          countryCode: state.countryCode
+        }));
+        setAvailableCities(emiratesAsCities as any);
+      } else {
+        setAvailableCities([]);
+      }
 
       // Update previous country ref
       previousCountryRef.current = selectedCountry;
@@ -1045,9 +1056,10 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    {/* City/Emirate dropdown - full width for UAE */}
+                    <div className={selectedCountry === 'AE' ? 'col-span-2' : ''}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        City *
+                        {selectedCountry === 'AE' ? 'Emirate *' : 'City *'}
                       </label>
                       <select
                         value={selectedCity}
@@ -1055,10 +1067,14 @@ export default function CheckoutPage() {
                           const cityName = e.target.value;
                           setSelectedCity(cityName);
                           setValue('city', cityName);
+                          // For UAE, also set stateProvince to the emirate name for database consistency
+                          if (selectedCountry === 'AE') {
+                            setValue('stateProvince', cityName);
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                       >
-                        <option value="">Select City</option>
+                        <option value="">{selectedCountry === 'AE' ? 'Select Emirate' : 'Select City'}</option>
                         {/* Show selected city even if not in library */}
                         {selectedCity && !availableCities.find(c => c.name === selectedCity) && (
                           <option value={selectedCity}>{selectedCity}</option>
@@ -1073,48 +1089,51 @@ export default function CheckoutPage() {
                         <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
                       )}
                       {selectedCity && !availableCities.find(c => c.name === selectedCity) && (
-                        <p className="text-xs text-gray-500 mt-1">City auto-filled from map (you can change if needed)</p>
+                        <p className="text-xs text-gray-500 mt-1">{selectedCountry === 'AE' ? 'Emirate' : 'City'} auto-filled from map (you can change if needed)</p>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        State/Province
-                      </label>
-                      <select
-                        value={selectedState}
-                        onChange={(e) => {
-                          const stateCode = e.target.value;
-                          setSelectedState(stateCode);
-                          const stateName = availableStates.find(s => s.isoCode === stateCode)?.name || stateCode;
-                          setValue('stateProvince', stateName);
+                    {/* State/Province dropdown - hidden for UAE */}
+                    {selectedCountry !== 'AE' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          State/Province
+                        </label>
+                        <select
+                          value={selectedState}
+                          onChange={(e) => {
+                            const stateCode = e.target.value;
+                            setSelectedState(stateCode);
+                            const stateName = availableStates.find(s => s.isoCode === stateCode)?.name || stateCode;
+                            setValue('stateProvince', stateName);
 
-                          // Load cities for the new state (only if user manually changes)
-                          if (!isUpdatingFromMap && stateCode && selectedCountry) {
-                            const cities = City.getCitiesOfState(selectedCountry, stateCode);
-                            setAvailableCities(cities);
-                            setSelectedCity('');
-                            setValue('city', '');
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                      >
-                        <option value="">Select State/Province</option>
-                        {/* Show selected state even if not in library */}
+                            // Load cities for the new state (only if user manually changes)
+                            if (!isUpdatingFromMap && stateCode && selectedCountry) {
+                              const cities = City.getCitiesOfState(selectedCountry, stateCode);
+                              setAvailableCities(cities);
+                              setSelectedCity('');
+                              setValue('city', '');
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                        >
+                          <option value="">Select State/Province</option>
+                          {/* Show selected state even if not in library */}
+                          {selectedState && !availableStates.find(s => s.isoCode === selectedState) && (
+                            <option value={selectedState}>
+                              {selectedState}
+                            </option>
+                          )}
+                          {availableStates.map((state) => (
+                            <option key={state.isoCode} value={state.isoCode}>
+                              {state.name}
+                            </option>
+                          ))}
+                        </select>
                         {selectedState && !availableStates.find(s => s.isoCode === selectedState) && (
-                          <option value={selectedState}>
-                            {selectedState}
-                          </option>
+                          <p className="text-xs text-gray-500 mt-1">State auto-filled from map (you can change if needed)</p>
                         )}
-                        {availableStates.map((state) => (
-                          <option key={state.isoCode} value={state.isoCode}>
-                            {state.name}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedState && !availableStates.find(s => s.isoCode === selectedState) && (
-                        <p className="text-xs text-gray-500 mt-1">State auto-filled from map (you can change if needed)</p>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>

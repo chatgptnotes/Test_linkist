@@ -67,6 +67,7 @@ export interface ProfileInput {
   profile_url?: string | null
   preferences?: {
     // Basic Information
+    salutation?: string
     secondaryEmail?: string
     whatsappNumber?: string
     showEmailPublicly?: boolean

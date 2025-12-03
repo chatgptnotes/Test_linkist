@@ -193,6 +193,7 @@ export async function POST(request: NextRequest) {
       },
       preferences: {
         // Basic Information
+        salutation: data.salutation || '',
         secondaryEmail: data.secondaryEmail || '',
         whatsappNumber: data.whatsappNumber || '',
         showEmailPublicly: data.showEmailPublicly ?? true,

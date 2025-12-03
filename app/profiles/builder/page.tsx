@@ -64,6 +64,7 @@ const Service = BuildCircle;
 
 interface ProfileData {
   // Basic Information
+  salutation: string;
   firstName: string;
   lastName: string;
   primaryEmail: string;
@@ -126,6 +127,18 @@ interface ProfileData {
   // Services
   services: Array<{ id: string; title: string; description: string; pricing: string; pricingUnit: string; currency: string; category: string; showPublicly: boolean }>;
 }
+
+// Salutation options
+const SALUTATIONS = [
+  { value: '', label: 'Select' },
+  { value: 'Dr.', label: 'Dr.' },
+  { value: 'Mr.', label: 'Mr.' },
+  { value: 'Mrs.', label: 'Mrs.' },
+  { value: 'Miss', label: 'Miss' },
+  { value: 'Master', label: 'Master' },
+  { value: 'Ms.', label: 'Ms.' },
+  { value: 'Prof.', label: 'Prof.' },
+];
 
 // Job title options with categories
 const JOB_TITLES = [
@@ -358,6 +371,7 @@ function ProfileBuilderContent() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   const [profileData, setProfileData] = useState<ProfileData>({
+    salutation: '',
     firstName: '',
     lastName: '',
     primaryEmail: '',
@@ -929,6 +943,7 @@ function ProfileBuilderContent() {
 
               // Map database profile structure to builder structure
               const mappedProfile = {
+                salutation: profileToEdit.preferences?.salutation || '',
                 firstName: profileToEdit.first_name || '',
                 lastName: profileToEdit.last_name || '',
                 primaryEmail: profileToEdit.email || '',
@@ -1418,6 +1433,7 @@ function ProfileBuilderContent() {
         },
         body: JSON.stringify({
           email: profileData.primaryEmail,
+          salutation: profileData.salutation,
           firstName: profileData.firstName,
           lastName: profileData.lastName,
           mobileNumber: fullMobileNumber,
@@ -1556,6 +1572,7 @@ function ProfileBuilderContent() {
         },
         body: JSON.stringify({
           email: profileData.primaryEmail,
+          salutation: profileData.salutation,
           firstName: profileData.firstName,
           lastName: profileData.lastName,
           mobileNumber: fullMobileNumber,
@@ -1981,6 +1998,23 @@ function ProfileBuilderContent() {
                     {/* Full Name */}
                     <div>
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Full Name</h3>
+
+                      {/* Salutation Dropdown */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Salutation</label>
+                        <select
+                          value={profileData.salutation}
+                          onChange={(e) => setProfileData({ ...profileData, salutation: e.target.value })}
+                          className="w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white"
+                        >
+                          {SALUTATIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
