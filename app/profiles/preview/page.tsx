@@ -24,7 +24,9 @@ import {
   ContentCopy,
   QrCode2,
   CloudDownload,
-  Share as ShareIcon
+  Share as ShareIcon,
+  BookmarkAdd,
+  PersonAdd
 } from '@mui/icons-material';
 
 // Currency symbols mapping
@@ -134,6 +136,7 @@ export default function ProfilePreviewPage() {
   const [shared, setShared] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [showQrCode, setShowQrCode] = useState(false);
+  const [showShareSection, setShowShareSection] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -402,6 +405,82 @@ export default function ProfilePreviewPage() {
     }
   };
 
+  // Generate and download vCard for saving to contacts
+  const handleSaveToContacts = async () => {
+    if (!profileData) return;
+
+    // Create vCard format (v3.0 for maximum compatibility)
+    const fullName = profileData.salutation
+      ? `${profileData.salutation} ${profileData.firstName} ${profileData.lastName}`
+      : `${profileData.firstName} ${profileData.lastName}`;
+    const vCard = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${fullName}`,
+      `N:${profileData.lastName};${profileData.firstName};;${profileData.salutation || ''};`,
+      profileData.jobTitle && profileData.showJobTitle ? `TITLE:${profileData.jobTitle}` : '',
+      profileData.companyName && profileData.showCompanyName ? `ORG:${profileData.companyName}` : '',
+      profileData.primaryEmail && profileData.showEmailPublicly ? `EMAIL;TYPE=INTERNET:${profileData.primaryEmail}` : '',
+      profileData.secondaryEmail && profileData.showSecondaryEmailPublicly ? `EMAIL;TYPE=INTERNET:${profileData.secondaryEmail}` : '',
+      profileData.mobileNumber && profileData.showMobilePublicly ? `TEL;TYPE=CELL:${profileData.mobileNumber}` : '',
+      profileData.whatsappNumber && profileData.showWhatsappPublicly ? `TEL;TYPE=WHATSAPP:${profileData.whatsappNumber}` : '',
+      profileData.companyWebsite && profileData.showCompanyWebsite ? `URL:${profileData.companyWebsite}` : '',
+      profileData.companyAddress && profileData.showCompanyAddress ? `ADR;TYPE=WORK:;;${profileData.companyAddress};;;;` : '',
+      customUrl ? `URL:${customUrl}` : '',
+      profileData.professionalSummary ? `NOTE:${profileData.professionalSummary.replace(/\n/g, '\\n')}` : '',
+      'END:VCARD'
+    ].filter(line => line).join('\n');
+
+    // Create blob
+    const blob = new Blob([vCard], { type: 'text/vcard;charset=utf-8' });
+    const fileName = `${profileData.firstName}-${profileData.lastName}.vcf`;
+
+    // Try Web Share API first (works on mobile browsers including Chrome iOS)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], fileName, { type: 'text/vcard;charset=utf-8' });
+
+        // Check if files can be shared
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `${profileData.firstName} ${profileData.lastName} Contact`,
+            text: `Save ${profileData.firstName} ${profileData.lastName} to your contacts`
+          });
+          return; // Exit if sharing was successful
+        }
+      } catch (error: any) {
+        // If user cancels the share, don't show error
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.log('Web Share API not available or failed, falling back to download');
+      }
+    }
+
+    // Fallback: Traditional download method (for desktop and browsers that don't support Web Share API)
+    try {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+
+      // For iOS devices, open in new tab as additional fallback
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        link.target = '_blank';
+      }
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download contact:', error);
+      alert('Unable to save contact. Please try again or use a different browser.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -506,6 +585,79 @@ export default function ProfilePreviewPage() {
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-6 sm:my-8"></div>
+
+            {/* Share and Add to Contacts Buttons */}
+            <div className="mb-6 flex flex-row gap-3">
+              <button
+                onClick={() => setShowShareSection(!showShareSection)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md"
+                style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+              >
+                <ShareIcon className="w-5 h-5" />
+                Share
+              </button>
+              <button
+                onClick={handleSaveToContacts}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-md"
+                style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+              >
+                <PersonAdd className="w-5 h-5" />
+                Add to Contacts
+              </button>
+            </div>
+
+            {/* Save Shortcut to Homepage Button */}
+            <div className="mb-6">
+              <button
+                onClick={() => router.push('/profile-dashboard')}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-red-600 border-2 border-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors shadow-md"
+              >
+                <BookmarkAdd className="w-5 h-5" />
+                Save shortcut to homepage
+              </button>
+            </div>
+
+            {/* Share Section - Compact Layout */}
+            {showShareSection && (
+              <div className="mb-6 sm:mb-8">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-semibold text-gray-900">Your Profile URL</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowQrCode(true)}
+                        className="flex-shrink-0 p-2 bg-white border border-blue-300 text-blue-600 rounded hover:bg-blue-50 transition"
+                        title="Show QR Code"
+                      >
+                        <QrCode2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={handleCopyUrl}
+                        className="flex-shrink-0 p-2 bg-white border border-blue-300 text-blue-600 rounded hover:bg-blue-50 transition"
+                        title="Copy URL"
+                      >
+                        {copied ? (
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ContentCopy className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <a
+                    href={customUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium break-all block"
+                  >
+                    {customUrl}
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Professional Summary Section */}
             {profileData.professionalSummary && (
