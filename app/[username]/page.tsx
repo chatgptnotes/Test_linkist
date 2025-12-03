@@ -268,30 +268,29 @@ export default function ProfilePreviewPage() {
   };
 
   const handleShareQrCode = async () => {
-    if (!qrCodeUrl) return;
+    const profileUrl = typeof window !== 'undefined' ? window.location.href : '';
 
     try {
-      // Convert data URL to blob
-      const response = await fetch(qrCodeUrl);
-      const blob = await response.blob();
-      const file = new File([blob], 'qr-code.png', { type: 'image/png' });
-
-      if (navigator.share && navigator.canShare({ files: [file] })) {
+      // First try Web Share API with just URL (works on most browsers)
+      if (navigator.share) {
         await navigator.share({
-          files: [file],
-          title: 'Profile QR Code',
-          text: `Scan this QR code to view my profile: ${customUrl}`
+          title: `${profileData?.firstName} ${profileData?.lastName}'s Profile`,
+          text: 'Check out my digital profile!',
+          url: profileUrl
         });
-      } else {
-        // Fallback: copy URL to clipboard
-        await navigator.clipboard.writeText(customUrl);
-        alert('QR code sharing not supported. URL copied to clipboard!');
+        return;
       }
     } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error('Error sharing QR code:', error);
-        alert('Failed to share QR code');
-      }
+      if (error.name === 'AbortError') return; // User cancelled
+      // Share failed, fall through to clipboard fallback
+    }
+
+    // Fallback: copy URL to clipboard
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      alert('Profile link copied to clipboard!');
+    } catch (err) {
+      alert('Failed to copy link');
     }
   };
 
@@ -875,7 +874,7 @@ export default function ProfilePreviewPage() {
                   className="flex-1 px-4 py-3 text-white rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2 font-medium border-2 border-red-600"
                   style={{ backgroundColor: '#dc2626' }}
                 >
-                  <Star className="w-5 h-5" />
+                  <ShareIcon className="w-5 h-5" />
                   Share
                 </button>
               </div>
