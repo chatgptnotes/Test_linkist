@@ -817,56 +817,14 @@ export default function AccountPage() {
             <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 lg:p-8">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Analytics Overview</h2>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gray-200 rounded-lg">
-                      <EyeIcon className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Total Profile Views</span>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-gray-200 rounded-lg">
+                    <EyeIcon className="w-5 h-5 text-gray-600" />
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">{analytics?.totalViews || 0}</span>
+                  <span className="text-sm text-gray-700">Total Profile Views</span>
                 </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <Users className="w-5 h-5 text-green-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Unique Views</span>
-                  </div>
-                  <span className="text-2xl font-bold text-green-600">{analytics?.uniqueViews || 0}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <WhatsApp className="w-5 h-5 text-yellow-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">WhatsApp Engagement</span>
-                  </div>
-                  <span className="text-2xl font-bold text-yellow-600">{analytics?.whatsappEngagement || 0}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <MailIcon className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Email Engagement</span>
-                  </div>
-                  <span className="text-2xl font-bold text-blue-600">{analytics?.emailEngagement || 0}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <Users className="w-5 h-5 text-green-600" />
-                    </div>
-                    <span className="text-sm text-gray-700">Social Media Engagement</span>
-                  </div>
-                  <span className="text-2xl font-bold text-green-600">{analytics?.socialMediaEngagement || 0}</span>
-                </div>
+                <span className="text-2xl font-bold text-gray-900">{analytics?.totalViews || 0}</span>
               </div>
             </div>
           </div>

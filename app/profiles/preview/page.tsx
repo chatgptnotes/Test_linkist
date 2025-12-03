@@ -499,7 +499,7 @@ export default function ProfilePreviewPage() {
               {/* Company Logo - Right side */}
               {profileData.companyLogo && (
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg p-2 shadow-md flex-shrink-0 relative z-0">
-                  <img src={profileData.companyLogo} alt="Company Logo" className="w-full h-full object-contain" />
+                  <img src={profileData.companyLogo} alt="Company Logo" className="w-full h-full object-cover" />
                 </div>
               )}
             </div>

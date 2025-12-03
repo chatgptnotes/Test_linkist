@@ -95,8 +95,28 @@ export async function GET(
       }))
     };
 
-    // Track profile view (optional - add analytics here)
-    // You can add view tracking logic here if needed
+    // Track profile view - fire-and-forget (don't await to avoid slowing response)
+    const viewerIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                     request.headers.get('x-real-ip') ||
+                     'unknown';
+    const viewerUserAgent = request.headers.get('user-agent') || null;
+
+    // Fire-and-forget: track the view without blocking the response
+    (async () => {
+      try {
+        await supabase
+          .from('profile_views')
+          .insert({
+            profile_email: profile.primary_email || profile.email,
+            viewer_ip: viewerIp,
+            viewer_user_agent: viewerUserAgent,
+            viewed_at: new Date().toISOString()
+          });
+        console.log('Profile view tracked for:', profile.custom_url);
+      } catch (err) {
+        console.error('View tracking error:', err);
+      }
+    })();
 
     return NextResponse.json({
       success: true,
