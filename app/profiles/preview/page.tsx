@@ -137,6 +137,13 @@ export default function ProfilePreviewPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [showQrCode, setShowQrCode] = useState(false);
   const [showShareSection, setShowShareSection] = useState(false);
+  const [showAddToHomePopup, setShowAddToHomePopup] = useState(false);
+  const [shortcutName, setShortcutName] = useState('');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+  const [showAndroidInstructions, setShowAndroidInstructions] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -323,6 +330,90 @@ export default function ProfilePreviewPage() {
       generateQrCode();
     }
   }, [customUrl]);
+
+  // Detect platform and capture PWA install prompt
+  useEffect(() => {
+    // Detect iOS
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
+
+    // Detect Android
+    const isAndroidDevice = /Android/.test(navigator.userAgent);
+    setIsAndroid(isAndroidDevice);
+
+    // Register service worker for PWA install prompt
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('✅ Service Worker registered:', registration.scope);
+        })
+        .catch((error) => {
+          console.log('❌ Service Worker registration failed:', error);
+        });
+    }
+
+    // Capture the beforeinstallprompt event for Android/Chrome
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      console.log('✅ PWA install prompt captured');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  // Set default shortcut name when profile loads
+  useEffect(() => {
+    if (profileData) {
+      const defaultName = `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || 'My Profile';
+      setShortcutName(defaultName);
+    }
+  }, [profileData]);
+
+  // Handle Add to Home Screen
+  const handleAddToHomeScreen = async () => {
+    if (isIOS) {
+      // iOS doesn't support programmatic install, show instructions
+      setShowAddToHomePopup(false);
+      setShowIOSInstructions(true);
+      return;
+    }
+
+    if (deferredPrompt) {
+      // Android/Chrome - use native prompt
+      try {
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+
+        if (choiceResult.outcome === 'accepted') {
+          console.log('✅ User accepted the install prompt');
+        } else {
+          console.log('❌ User dismissed the install prompt');
+        }
+
+        setDeferredPrompt(null);
+        setShowAddToHomePopup(false);
+      } catch (error) {
+        console.error('Error showing install prompt:', error);
+        // Fallback to styled instructions modal
+        setShowAddToHomePopup(false);
+        setShowAndroidInstructions(true);
+      }
+    } else {
+      // No deferred prompt available - show styled instructions modal
+      setShowAddToHomePopup(false);
+      if (isAndroid) {
+        setShowAndroidInstructions(true);
+      } else {
+        // Desktop or other browsers
+        setShowAndroidInstructions(true);
+      }
+    }
+  };
 
   const handleCopyUrl = async () => {
     if (!customUrl) return;
@@ -609,7 +700,7 @@ export default function ProfilePreviewPage() {
             {/* Save Shortcut to Homepage Button */}
             <div className="mb-6">
               <button
-                onClick={() => router.push('/profile-dashboard')}
+                onClick={() => setShowAddToHomePopup(true)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-red-600 border-2 border-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors shadow-md"
               >
                 <BookmarkAdd className="w-5 h-5" />
@@ -1038,6 +1129,205 @@ export default function ProfilePreviewPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add to Home Screen Popup */}
+      {showAddToHomePopup && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          onClick={() => setShowAddToHomePopup(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Add to Home Screen</h3>
+              <button
+                onClick={() => setShowAddToHomePopup(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Enter a name for your shortcut. This will appear on your home screen.
+            </p>
+
+            <input
+              type="text"
+              value={shortcutName}
+              onChange={(e) => setShortcutName(e.target.value)}
+              placeholder="Shortcut name"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none mb-4 text-gray-900"
+              autoFocus
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAddToHomePopup(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddToHomeScreen}
+                className="flex-1 px-4 py-3 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* iOS Instructions Modal */}
+      {showIOSInstructions && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          onClick={() => setShowIOSInstructions(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Add to Home Screen</h3>
+              <button
+                onClick={() => setShowIOSInstructions(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                To add <strong>&quot;{shortcutName}&quot;</strong> to your home screen:
+              </p>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    1
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Tap the <strong>Share</strong> button{' '}
+                    <svg className="inline-block w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>{' '}
+                    at the bottom of Safari
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    2
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong>
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    3
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Name it <strong>&quot;{shortcutName}&quot;</strong> and tap <strong>Add</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowIOSInstructions(false)}
+              className="w-full mt-6 px-4 py-3 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              style={{ backgroundColor: '#dc2626' }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Android/Chrome Instructions Modal */}
+      {showAndroidInstructions && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          onClick={() => setShowAndroidInstructions(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Add to Home Screen</h3>
+              <button
+                onClick={() => setShowAndroidInstructions(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                To add <strong>&quot;{shortcutName}&quot;</strong> to your home screen:
+              </p>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    1
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Tap the <strong>menu button</strong>{' '}
+                    <span className="inline-flex items-center justify-center w-6 h-6 bg-gray-200 rounded text-gray-700 font-bold text-lg">⋮</span>{' '}
+                    in Chrome
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    2
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Select <strong>&quot;Add to Home screen&quot;</strong> or <strong>&quot;Install app&quot;</strong>
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    3
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Name it <strong>&quot;{shortcutName}&quot;</strong> and tap <strong>Add</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700">
+                  <strong>Note:</strong> This works best on the live site with HTTPS. The native install prompt will appear automatically in production.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowAndroidInstructions(false)}
+              className="w-full mt-6 px-4 py-3 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              style={{ backgroundColor: '#dc2626' }}
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}
