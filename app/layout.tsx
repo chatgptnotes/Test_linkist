@@ -48,6 +48,17 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
+        {/* Capture PWA install prompt globally before React hydrates */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            window.deferredPrompt = null;
+            window.addEventListener('beforeinstallprompt', function(e) {
+              e.preventDefault();
+              window.deferredPrompt = e;
+              console.log('✅ PWA install prompt captured globally');
+            });
+          `
+        }} />
       </head>
       <body className={`${inter.className} antialiased bg-black min-h-screen flex flex-col m-0 p-0`}>
         <AdminInitializer />

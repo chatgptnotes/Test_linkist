@@ -383,11 +383,14 @@ export default function ProfilePreviewPage() {
       return;
     }
 
-    if (deferredPrompt) {
+    // Check both local state and global window object for the deferred prompt
+    const prompt = deferredPrompt || (typeof window !== 'undefined' ? (window as any).deferredPrompt : null);
+
+    if (prompt) {
       // Android/Chrome - use native prompt
       try {
-        deferredPrompt.prompt();
-        const choiceResult = await deferredPrompt.userChoice;
+        prompt.prompt();
+        const choiceResult = await prompt.userChoice;
 
         if (choiceResult.outcome === 'accepted') {
           console.log('✅ User accepted the install prompt');
@@ -395,7 +398,11 @@ export default function ProfilePreviewPage() {
           console.log('❌ User dismissed the install prompt');
         }
 
+        // Clear both local and global prompt
         setDeferredPrompt(null);
+        if (typeof window !== 'undefined') {
+          (window as any).deferredPrompt = null;
+        }
         setShowAddToHomePopup(false);
       } catch (error) {
         console.error('Error showing install prompt:', error);
@@ -405,6 +412,7 @@ export default function ProfilePreviewPage() {
       }
     } else {
       // No deferred prompt available - show styled instructions modal
+      console.log('❌ No deferred prompt available, showing instructions');
       setShowAddToHomePopup(false);
       if (isAndroid) {
         setShowAndroidInstructions(true);
