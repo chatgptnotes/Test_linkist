@@ -4,6 +4,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/admin/printer/send",
+      "schedule": "0 14 * * *"
+    }
+  ],
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
