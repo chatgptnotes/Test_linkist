@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/ToastProvider';
 import AdminInitializer from '@/components/AdminInitializer';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { Toaster } from 'sonner';
+import { PWAProvider } from '@/contexts/PWAContext';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -48,14 +49,36 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
-        {/* Capture PWA install prompt globally before React hydrates */}
+        {/* PWA: Register service worker and capture install prompt before React hydrates */}
         <script dangerouslySetInnerHTML={{
           __html: `
             window.deferredPrompt = null;
+            window.pwaDebug = { swRegistered: false, promptCaptured: false };
+
+            // Register service worker immediately for PWA support
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/sw.js')
+                .then(function(reg) {
+                  console.log('✅ Service Worker registered:', reg.scope);
+                  window.pwaDebug.swRegistered = true;
+                })
+                .catch(function(err) {
+                  console.log('❌ Service Worker registration failed:', err);
+                });
+            }
+
+            // Capture the install prompt before React hydrates
             window.addEventListener('beforeinstallprompt', function(e) {
               e.preventDefault();
               window.deferredPrompt = e;
+              window.pwaDebug.promptCaptured = true;
               console.log('✅ PWA install prompt captured globally');
+            });
+
+            // Track when app is installed
+            window.addEventListener('appinstalled', function() {
+              console.log('✅ PWA was installed');
+              window.deferredPrompt = null;
             });
           `
         }} />
@@ -63,12 +86,14 @@ export default function RootLayout({
       <body className={`${inter.className} antialiased bg-black min-h-screen flex flex-col m-0 p-0`}>
         <AdminInitializer />
         <Toaster position="top-center" richColors />
-        <ToastProvider>
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
-          <GDPRConsentBanner />
-        </ToastProvider>
+        <PWAProvider>
+          <ToastProvider>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+            <GDPRConsentBanner />
+          </ToastProvider>
+        </PWAProvider>
       </body>
     </html>
   );

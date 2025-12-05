@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import Logo from '@/components/Logo';
+import { usePWA } from '@/contexts/PWAContext';
 import {
   CheckCircle,
   Email,
@@ -139,11 +140,11 @@ export default function ProfilePreviewPage() {
   const [showShareSection, setShowShareSection] = useState(false);
   const [showAddToHomePopup, setShowAddToHomePopup] = useState(false);
   const [shortcutName, setShortcutName] = useState('');
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [showAndroidInstructions, setShowAndroidInstructions] = useState(false);
+
+  // Use centralized PWA context
+  const { isIOS, isAndroid, isInstallable, triggerInstall } = usePWA();
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -331,40 +332,6 @@ export default function ProfilePreviewPage() {
     }
   }, [customUrl]);
 
-  // Detect platform and capture PWA install prompt
-  useEffect(() => {
-    // Detect iOS
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(isIOSDevice);
-
-    // Detect Android
-    const isAndroidDevice = /Android/.test(navigator.userAgent);
-    setIsAndroid(isAndroidDevice);
-
-    // Register service worker for PWA install prompt
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('✅ Service Worker registered:', registration.scope);
-        })
-        .catch((error) => {
-          console.log('❌ Service Worker registration failed:', error);
-        });
-    }
-
-    // Capture the beforeinstallprompt event for Android/Chrome
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      console.log('✅ PWA install prompt captured');
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
 
   // Set default shortcut name when profile loads
   useEffect(() => {
@@ -376,50 +343,32 @@ export default function ProfilePreviewPage() {
 
   // Handle Add to Home Screen
   const handleAddToHomeScreen = async () => {
+    console.log('🏠 Add to Home Screen clicked');
+    console.log('📱 Platform: iOS =', isIOS, ', Android =', isAndroid);
+    console.log('📦 PWA Installable:', isInstallable);
+    console.log('🔍 Window deferred prompt:', typeof window !== 'undefined' ? !!(window as any).deferredPrompt : 'N/A');
+
     if (isIOS) {
-      // iOS doesn't support programmatic install, show instructions
-      setShowAddToHomePopup(false);
+      // iOS doesn't support programmatic install, show instructions directly
+      console.log('📱 iOS detected - showing instructions');
       setShowIOSInstructions(true);
       return;
     }
 
-    // Check both local state and global window object for the deferred prompt
-    const prompt = deferredPrompt || (typeof window !== 'undefined' ? (window as any).deferredPrompt : null);
+    // Try native PWA install first
+    const result = await triggerInstall();
 
-    if (prompt) {
-      // Android/Chrome - use native prompt
-      try {
-        prompt.prompt();
-        const choiceResult = await prompt.userChoice;
-
-        if (choiceResult.outcome === 'accepted') {
-          console.log('✅ User accepted the install prompt');
-        } else {
-          console.log('❌ User dismissed the install prompt');
-        }
-
-        // Clear both local and global prompt
-        setDeferredPrompt(null);
-        if (typeof window !== 'undefined') {
-          (window as any).deferredPrompt = null;
-        }
-        setShowAddToHomePopup(false);
-      } catch (error) {
-        console.error('Error showing install prompt:', error);
-        // Fallback to styled instructions modal
-        setShowAddToHomePopup(false);
-        setShowAndroidInstructions(true);
-      }
+    if (result === 'accepted') {
+      console.log('✅ User accepted the install prompt');
+      // Success - native popup handled everything
+    } else if (result === 'dismissed') {
+      console.log('❌ User dismissed the install prompt');
+      // User dismissed - that's fine, no fallback needed
     } else {
-      // No deferred prompt available - show styled instructions modal
+      // No deferred prompt available - show instructions modal
       console.log('❌ No deferred prompt available, showing instructions');
-      setShowAddToHomePopup(false);
-      if (isAndroid) {
-        setShowAndroidInstructions(true);
-      } else {
-        // Desktop or other browsers
-        setShowAndroidInstructions(true);
-      }
+      console.log('ℹ️ This usually means: not HTTPS, already installed, or browser doesn\'t support beforeinstallprompt');
+      setShowAndroidInstructions(true);
     }
   };
 
@@ -708,7 +657,7 @@ export default function ProfilePreviewPage() {
             {/* Save Shortcut to Homepage Button */}
             <div className="mb-6">
               <button
-                onClick={() => setShowAddToHomePopup(true)}
+                onClick={handleAddToHomeScreen}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-red-600 border-2 border-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors shadow-md"
               >
                 <BookmarkAdd className="w-5 h-5" />
