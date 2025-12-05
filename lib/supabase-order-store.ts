@@ -60,6 +60,9 @@ interface OrderRow {
   notes?: string
   voucher_code?: string
   voucher_discount?: number
+  // Printer notification tracking
+  printer_email_sent?: boolean
+  printer_email_sent_at?: string
 }
 
 // Convert database row to Order interface
@@ -87,6 +90,8 @@ const rowToOrder = (row: OrderRow): Order => ({
   notes: row.notes,
   voucherCode: row.voucher_code,
   voucherDiscount: row.voucher_discount,
+  printerEmailSent: row.printer_email_sent || false,
+  printerEmailSentAt: row.printer_email_sent_at ? new Date(row.printer_email_sent_at).getTime() : null,
   createdAt: new Date(row.created_at).getTime(),
   updatedAt: new Date(row.updated_at).getTime(),
 })
@@ -350,7 +355,7 @@ export const SupabaseOrderStore = {
   // Statistics
   getStats: async () => {
     const supabase = createAdminClient()
-    
+
     // Get all orders for statistics
     const { data: orders, error } = await supabase
       .from('orders')
@@ -368,7 +373,7 @@ export const SupabaseOrderStore = {
     }, {} as Record<OrderStatus, number>)
 
     const totalRevenue = orders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0)
-    
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const todaysOrders = orders.filter(order => new Date(order.created_at) >= today)
@@ -380,6 +385,111 @@ export const SupabaseOrderStore = {
       todaysOrders: todaysOrders.length,
       todaysRevenue: todaysOrders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0),
     }
+  },
+
+  // Printer notification methods
+  /**
+   * Get today's orders that haven't been sent to the printer yet
+   * Only includes confirmed or production status orders
+   */
+  getUnsentToPrinter: async (): Promise<Order[]> => {
+    const supabase = createAdminClient()
+
+    // Get today's start time in UTC
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayISO = today.toISOString()
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .gte('created_at', todayISO)
+      .or('printer_email_sent.is.null,printer_email_sent.eq.false')
+      .in('status', ['confirmed', 'production'])
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching unsent printer orders:', error)
+      throw new Error(`Failed to fetch unsent orders: ${error.message}`)
+    }
+
+    console.log(`📋 Found ${data?.length || 0} orders not yet sent to printer`)
+    return (data || []).map(rowToOrder)
+  },
+
+  /**
+   * Mark multiple orders as sent to printer
+   */
+  markAsSentToPrinter: async (orderIds: string[]): Promise<boolean> => {
+    if (orderIds.length === 0) return true
+
+    const supabase = createAdminClient()
+
+    const { error } = await supabase
+      .from('orders')
+      .update({
+        printer_email_sent: true,
+        printer_email_sent_at: new Date().toISOString()
+      })
+      .in('id', orderIds)
+
+    if (error) {
+      console.error('Error marking orders as sent to printer:', error)
+      throw new Error(`Failed to mark orders as sent: ${error.message}`)
+    }
+
+    console.log(`✅ Marked ${orderIds.length} orders as sent to printer`)
+    return true
+  },
+
+  /**
+   * Mark a single order as sent to printer (for resend functionality)
+   */
+  markSingleOrderAsSentToPrinter: async (orderId: string): Promise<Order | null> => {
+    const supabase = createAdminClient()
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        printer_email_sent: true,
+        printer_email_sent_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      console.error('Error marking single order as sent to printer:', error)
+      throw new Error(`Failed to mark order as sent: ${error.message}`)
+    }
+
+    return rowToOrder(data)
+  },
+
+  /**
+   * Reset printer_email_sent flag for an order (for re-sending)
+   */
+  resetPrinterEmailSent: async (orderId: string): Promise<Order | null> => {
+    const supabase = createAdminClient()
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        printer_email_sent: false,
+        printer_email_sent_at: null
+      })
+      .eq('id', orderId)
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      console.error('Error resetting printer email sent flag:', error)
+      throw new Error(`Failed to reset printer flag: ${error.message}`)
+    }
+
+    return rowToOrder(data)
   },
 }
 

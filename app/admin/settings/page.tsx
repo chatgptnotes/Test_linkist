@@ -16,6 +16,10 @@ import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import GroupsIcon from '@mui/icons-material/Groups';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import PrintIcon from '@mui/icons-material/Print';
+import SendIcon from '@mui/icons-material/Send';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckIcon from '@mui/icons-material/Check';
@@ -38,12 +42,25 @@ const Key = VpnKeyIcon;
 const Users = GroupsIcon;
 const Package = Inventory2Icon;
 const Truck = LocalShippingIcon;
+const Printer = PrintIcon;
+const Send = SendIcon;
+const Schedule = ScheduleIcon;
+const Copy = ContentCopyIcon;
 const Eye = VisibilityIcon;
 const EyeOff = VisibilityOffIcon;
 const Check = CheckIcon;
 const X = CloseIcon;
 const RefreshCw = RefreshIcon;
 const AlertTriangle = WarningIcon;
+
+interface PrinterSettings {
+  printerEmail: string;
+  scheduledHour: number;
+  scheduledMinute: number;
+  timezone: string;
+  isEnabled: boolean;
+  lastSentAt: string | null;
+}
 
 interface SystemSettings {
   general: {
@@ -118,9 +135,108 @@ export default function SettingsPage() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [changes, setChanges] = useState(false);
 
+  // Printer settings state
+  const [printerSettings, setPrinterSettings] = useState<PrinterSettings>({
+    printerEmail: '',
+    scheduledHour: 18,
+    scheduledMinute: 0,
+    timezone: 'Asia/Dubai',
+    isEnabled: false,
+    lastSentAt: null,
+  });
+  const [printerLoading, setPrinterLoading] = useState(false);
+  const [printerSaving, setPrinterSaving] = useState(false);
+  const [sendingToPrinter, setSendingToPrinter] = useState(false);
+  const [printerChanges, setPrinterChanges] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
   useEffect(() => {
     fetchSettings();
+    fetchPrinterSettings();
   }, []);
+
+  const fetchPrinterSettings = async () => {
+    try {
+      setPrinterLoading(true);
+      const response = await fetch('/api/admin/printer/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.settings) {
+          setPrinterSettings(data.settings);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch printer settings:', error);
+    } finally {
+      setPrinterLoading(false);
+    }
+  };
+
+  const savePrinterSettings = async () => {
+    try {
+      setPrinterSaving(true);
+      const response = await fetch('/api/admin/printer/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(printerSettings)
+      });
+
+      if (response.ok) {
+        setPrinterChanges(false);
+        alert('Printer settings saved successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to save printer settings');
+      }
+    } catch (error) {
+      console.error('Failed to save printer settings:', error);
+      alert('Failed to save printer settings');
+    } finally {
+      setPrinterSaving(false);
+    }
+  };
+
+  const sendToPrinterNow = async () => {
+    try {
+      setSendingToPrinter(true);
+      const response = await fetch('/api/admin/printer/send', {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (data.orderCount === 0) {
+          alert('No pending orders to send to printer.');
+        } else {
+          alert(`Successfully sent ${data.orderCount} order(s) to printer!`);
+          fetchPrinterSettings(); // Refresh to show updated lastSentAt
+        }
+      } else {
+        alert(data.error || data.message || 'Failed to send orders to printer');
+      }
+    } catch (error) {
+      console.error('Failed to send to printer:', error);
+      alert('Failed to send orders to printer');
+    } finally {
+      setSendingToPrinter(false);
+    }
+  };
+
+  const updatePrinterSettings = (field: keyof PrinterSettings, value: any) => {
+    setPrinterSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    setPrinterChanges(true);
+  };
+
+  const copyEndpointUrl = () => {
+    const url = `${window.location.origin}/api/admin/printer/send`;
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
 
   const fetchSettings = async () => {
     try {
@@ -198,6 +314,7 @@ export default function SettingsPage() {
     { id: 'general', name: 'General', icon: Settings },
     { id: 'branding', name: 'Branding', icon: Palette },
     { id: 'email', name: 'Email', icon: Mail },
+    { id: 'printer', name: 'Printer', icon: Printer },
     { id: 'payment', name: 'Payment', icon: CreditCard },
     { id: 'shipping', name: 'Shipping', icon: Truck },
     { id: 'security', name: 'Security', icon: Shield },
@@ -500,6 +617,218 @@ export default function SettingsPage() {
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Printer Settings */}
+                {activeTab === 'printer' && (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">Printer Email Settings</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Configure automatic email notifications to your card printer
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        {printerChanges && (
+                          <span className="text-sm text-orange-600 flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            Unsaved
+                          </span>
+                        )}
+                        <button
+                          onClick={savePrinterSettings}
+                          disabled={printerSaving || !printerChanges}
+                          className="flex items-center space-x-2 px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ color: 'white' }}
+                        >
+                          {printerSaving ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                          <span style={{ color: 'white' }}>{printerSaving ? 'Saving...' : 'Save'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {printerLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                        <span className="ml-2 text-gray-500">Loading printer settings...</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">
+                              Enable Printer Notifications
+                            </span>
+                            <p className="text-sm text-gray-500">
+                              When enabled, the cron service will send daily emails to the printer
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => updatePrinterSettings('isEnabled', !printerSettings.isEnabled)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              printerSettings.isEnabled ? 'bg-green-600' : 'bg-gray-200'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                printerSettings.isEnabled ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Printer Email */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Printer Email Address
+                            </label>
+                            <input
+                              type="email"
+                              value={printerSettings.printerEmail}
+                              onChange={(e) => updatePrinterSettings('printerEmail', e.target.value)}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-red-600 focus:border-red-600"
+                              placeholder="printer@example.com"
+                            />
+                            <p className="text-sm text-gray-500 mt-1">
+                              All order details will be sent to this email address
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Scheduled Hour (24-hour format)
+                            </label>
+                            <select
+                              value={printerSettings.scheduledHour}
+                              onChange={(e) => updatePrinterSettings('scheduledHour', parseInt(e.target.value))}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-red-600 focus:border-red-600"
+                            >
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <option key={i} value={i}>
+                                  {i.toString().padStart(2, '0')}:00 ({i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Scheduled Minute
+                            </label>
+                            <select
+                              value={printerSettings.scheduledMinute}
+                              onChange={(e) => updatePrinterSettings('scheduledMinute', parseInt(e.target.value))}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-red-600 focus:border-red-600"
+                            >
+                              {[0, 15, 30, 45].map((min) => (
+                                <option key={min} value={min}>
+                                  :{min.toString().padStart(2, '0')}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Timezone
+                            </label>
+                            <select
+                              value={printerSettings.timezone}
+                              onChange={(e) => updatePrinterSettings('timezone', e.target.value)}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-red-600 focus:border-red-600"
+                            >
+                              <option value="Asia/Dubai">Asia/Dubai (UAE)</option>
+                              <option value="UTC">UTC</option>
+                              <option value="America/New_York">America/New_York</option>
+                              <option value="Europe/London">Europe/London</option>
+                              <option value="Asia/Kolkata">Asia/Kolkata</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Last Sent Info */}
+                        {printerSettings.lastSentAt && (
+                          <div className="p-4 bg-blue-50 rounded-lg">
+                            <div className="flex items-center">
+                              <Schedule className="h-5 w-5 text-blue-600 mr-2" />
+                              <span className="text-sm text-blue-800">
+                                Last sent: {new Date(printerSettings.lastSentAt).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Manual Send Button */}
+                        <div className="border-t pt-6">
+                          <h4 className="text-md font-medium text-gray-900 mb-3">Manual Actions</h4>
+                          <button
+                            onClick={sendToPrinterNow}
+                            disabled={sendingToPrinter || !printerSettings.printerEmail}
+                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ color: 'white' }}
+                          >
+                            {sendingToPrinter ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                            <span style={{ color: 'white' }}>{sendingToPrinter ? 'Sending...' : 'Send All Pending Orders Now'}</span>
+                          </button>
+                          <p className="text-sm text-gray-500 mt-2">
+                            This will immediately send all unsent orders to the printer email
+                          </p>
+                        </div>
+
+                        {/* Cron Setup Instructions */}
+                        <div className="border-t pt-6">
+                          <h4 className="text-md font-medium text-gray-900 mb-3">Cron Job Setup</h4>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-3">
+                              To automate daily emails, set up an external cron job (e.g., cron-job.org) with these settings:
+                            </p>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between bg-white p-3 rounded border">
+                                <div className="flex-1 mr-3">
+                                  <span className="text-xs text-gray-500">Endpoint URL:</span>
+                                  <code className="block text-sm text-gray-800 truncate">
+                                    {typeof window !== 'undefined' ? `${window.location.origin}/api/admin/printer/send` : '/api/admin/printer/send'}
+                                  </code>
+                                </div>
+                                <button
+                                  onClick={copyEndpointUrl}
+                                  className="flex items-center px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                                >
+                                  {copiedUrl ? (
+                                    <>
+                                      <Check className="h-4 w-4 text-green-600 mr-1" />
+                                      <span className="text-green-600">Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-4 w-4 mr-1" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                <p><strong>Method:</strong> POST</p>
+                                <p><strong>Headers:</strong> Authorization: Bearer YOUR_CRON_API_KEY</p>
+                                <p><strong>Schedule:</strong> {printerSettings.scheduledHour.toString().padStart(2, '0')}:{printerSettings.scheduledMinute.toString().padStart(2, '0')} {printerSettings.timezone}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 

@@ -249,7 +249,7 @@ export async function sendOrderEmail({ to, subject, html, tags }: OrderEmailPara
       responseCode: (error as any)?.responseCode,
       command: (error as any)?.command
     });
-    return { success: false, id: null, error: { message: String(error) } };
+    return { success: false, id: null, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

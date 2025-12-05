@@ -52,6 +52,9 @@ export interface Order {
   notes?: string;
   voucherCode?: string;
   voucherDiscount?: number;
+  // Printer notification tracking
+  printerEmailSent?: boolean;
+  printerEmailSentAt?: number | null;
 }
 
 // Global in-memory store - replace with database in production

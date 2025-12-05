@@ -19,6 +19,7 @@ import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import PrintIcon from '@mui/icons-material/Print';
 
 // Icon aliases
 const Search = SearchIcon;
@@ -37,6 +38,7 @@ const Package = Inventory2Icon;
 const User = PersonIcon;
 const Calendar = CalendarTodayIcon;
 const DollarSign = AttachMoneyIcon;
+const Print = PrintIcon;
 
 interface Payment {
   id: string;
@@ -92,6 +94,8 @@ interface Order {
   payment?: Payment | null;
   voucherCode?: string | null;
   voucherDiscount?: number;
+  printerEmailSent?: boolean;
+  printerEmailSentAt?: number | null;
 }
 
 export default function OrdersPage() {
@@ -249,6 +253,26 @@ export default function OrdersPage() {
     }
   };
 
+  const resendToPrinter = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/resend-printer`, {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Order sent to printer successfully!`);
+        fetchOrders();
+      } else {
+        alert(data.error || 'Failed to send to printer');
+      }
+    } catch (error) {
+      console.error('Failed to resend to printer:', error);
+      alert('Failed to send to printer');
+    }
+  };
+
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -361,6 +385,9 @@ export default function OrdersPage() {
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Printer
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -501,6 +528,26 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      {order.printerEmailSent ? (
+                        <div className="flex items-center space-x-1">
+                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                            <CheckCircle className="h-3 w-3" />
+                            <span>Sent</span>
+                          </span>
+                          {order.printerEmailSentAt && (
+                            <span className="text-xs text-gray-400" title={new Date(order.printerEmailSentAt).toLocaleString()}>
+                              {new Date(order.printerEmailSentAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          <Clock className="h-3 w-3" />
+                          <span>Pending</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => {
@@ -518,6 +565,17 @@ export default function OrdersPage() {
                           title="Resend Email"
                         >
                           <Mail className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => resendToPrinter(order.id)}
+                          className={`p-2 rounded-lg ${
+                            order.printerEmailSent
+                              ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-50'
+                              : 'text-purple-600 hover:text-purple-800 hover:bg-purple-50'
+                          }`}
+                          title={order.printerEmailSent ? 'Resend to Printer' : 'Send to Printer'}
+                        >
+                          <Print className="h-4 w-4" />
                         </button>
                         <button
                           className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg"
@@ -726,6 +784,43 @@ export default function OrdersPage() {
                     className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600"
                   >
                     Send Delivered Confirmation
+                  </button>
+                </div>
+              </div>
+
+              {/* Printer Actions */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <Print className="h-4 w-4 mr-2 text-purple-600" />
+                  Printer Status
+                </h4>
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3 mb-3">
+                  <div className="flex items-center space-x-3">
+                    {selectedOrder.printerEmailSent ? (
+                      <>
+                        <span className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Sent to Printer</span>
+                        </span>
+                        {selectedOrder.printerEmailSentAt && (
+                          <span className="text-sm text-gray-500">
+                            on {new Date(selectedOrder.printerEmailSentAt).toLocaleString()}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                        <Clock className="h-4 w-4" />
+                        <span>Not Sent to Printer</span>
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => resendToPrinter(selectedOrder.id)}
+                    className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+                  >
+                    <Print className="h-4 w-4" />
+                    <span>{selectedOrder.printerEmailSent ? 'Resend to Printer' : 'Send to Printer'}</span>
                   </button>
                 </div>
               </div>

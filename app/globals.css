@@ -458,6 +458,27 @@ button.text-white {
   color: #ffffff !important;
 }
 
+/* Fix for colored buttons - ensure white text is visible */
+button.bg-red-700,
+button.bg-red-600,
+button.bg-red-800,
+button.bg-blue-700,
+button.bg-blue-600,
+button.bg-green-600,
+button.bg-green-700 {
+  color: #ffffff !important;
+}
+
+button.bg-red-700 span,
+button.bg-red-600 span,
+button.bg-red-800 span,
+button.bg-blue-700 span,
+button.bg-blue-600 span,
+button.bg-green-600 span,
+button.bg-green-700 span {
+  color: #ffffff !important;
+}
+
 /* Links */
 a {
   color: inherit;
