@@ -491,7 +491,8 @@
       "Read(//c/Users/admin/OneDrive/Pictures/Screenshots/**)",
       "Read(//c/Users/Lenovo/OneDrive/Pictures/Screenshots/**)",
       "Bash(nul)",
-      "Bash(temp_original.tsx)"
+      "Bash(temp_original.tsx)",
+      "Bash(unzip:*)"
     ],
     "deny": [],
     "ask": []

@@ -75,7 +75,13 @@ export default function ConfigureNewPage() {
       setCurrentStep(currentStep + 1);
     } else {
       // Final step - redirect to checkout
-      localStorage.setItem('nfcConfig', JSON.stringify(formData));
+      // Get pattern name from the patterns array
+      const selectedPattern = patterns.find(p => p.id === formData.pattern);
+      const configData = {
+        ...formData,
+        pattern: selectedPattern?.name || `Pattern ${formData.pattern}`
+      };
+      localStorage.setItem('nfcConfig', JSON.stringify(configData));
       router.push('/nfc/checkout');
     }
   };

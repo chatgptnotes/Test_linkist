@@ -64,7 +64,7 @@ interface Order {
     quantity?: number;
     baseMaterial?: string;
     color?: string;
-    pattern?: number;
+    pattern?: string | number;
     texture?: string;
   };
   shipping: {
@@ -430,8 +430,8 @@ export default function OrdersPage() {
                             </span>
                           )}
                           {order.cardConfig.pattern && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                              Pattern {order.cardConfig.pattern}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 capitalize">
+                              {typeof order.cardConfig.pattern === 'string' ? order.cardConfig.pattern : `Pattern ${order.cardConfig.pattern}`}
                             </span>
                           )}
                         </div>
@@ -659,7 +659,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
                     <p className="text-xs text-gray-500 mb-1">Pattern</p>
-                    <p className="font-semibold text-orange-900">{selectedOrder.cardConfig.pattern ? `Pattern ${selectedOrder.cardConfig.pattern}` : 'N/A'}</p>
+                    <p className="font-semibold text-orange-900 capitalize">{selectedOrder.cardConfig.pattern ? (typeof selectedOrder.cardConfig.pattern === 'string' ? selectedOrder.cardConfig.pattern : `Pattern ${selectedOrder.cardConfig.pattern}`) : 'N/A'}</p>
                   </div>
                 </div>
               </div>

@@ -161,14 +161,14 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, number>) || {};
 
     const stats = {
-      totalOrders,
-      totalRevenue: Number(totalRevenue),
-      totalCustomers,
-      pendingOrders,
-      todaysOrders,
-      todaysRevenue: Number(todaysRevenue),
-      weeklyGrowth,
-      monthlyGrowth,
+      totalOrders: totalOrders ?? 0,
+      totalRevenue: Number(totalRevenue) || 0,
+      totalCustomers: totalCustomers ?? 0,
+      pendingOrders: pendingOrders ?? 0,
+      todaysOrders: todaysOrders ?? 0,
+      todaysRevenue: Number(todaysRevenue) || 0,
+      weeklyGrowth: weeklyGrowth ?? 0,
+      monthlyGrowth: monthlyGrowth ?? 0,
       statusCounts: statusCountsObj
     };
 

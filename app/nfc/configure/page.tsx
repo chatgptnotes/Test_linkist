@@ -282,13 +282,15 @@ export default function ConfigureNewPage() {
     setIsLoading(true);
 
     // Create clean data object for storage
+    // Get pattern name from the patterns array
+    const selectedPattern = patterns.find(p => p.id === formData.pattern);
     const configData = {
       cardFirstName: formData.cardFirstName.trim(),
       cardLastName: formData.cardLastName.trim(),
       baseMaterial: formData.baseMaterial,
       texture: formData.texture,
       colour: formData.colour,
-      pattern: formData.pattern
+      pattern: selectedPattern?.name || `Pattern ${formData.pattern}`
     };
 
     console.log('Configure: Saving card data to localStorage:', configData);
