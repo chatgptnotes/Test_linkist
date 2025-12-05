@@ -367,14 +367,20 @@ export default function SettingsPage() {
             <button
               onClick={saveSettings}
               disabled={saving || !changes}
-              className="flex items-center space-x-2 px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: '#b91c1c',
+                color: '#ffffff',
+                border: 'none',
+                cursor: saving || !changes ? 'not-allowed' : 'pointer'
+              }}
             >
               {saving ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-4 w-4 animate-spin" style={{ color: '#ffffff' }} />
               ) : (
-                <Save className="h-4 w-4" />
+                <Save className="h-4 w-4" style={{ color: '#ffffff' }} />
               )}
-              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+              <span style={{ color: '#ffffff', fontWeight: 500 }}>{saving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </div>
@@ -640,15 +646,20 @@ export default function SettingsPage() {
                         <button
                           onClick={savePrinterSettings}
                           disabled={printerSaving || !printerChanges}
-                          className="flex items-center space-x-2 px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                          style={{ color: 'white' }}
+                          className="flex items-center space-x-2 px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            backgroundColor: '#b91c1c',
+                            color: '#ffffff',
+                            border: 'none',
+                            cursor: printerSaving || !printerChanges ? 'not-allowed' : 'pointer'
+                          }}
                         >
                           {printerSaving ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            <RefreshCw className="h-4 w-4 animate-spin" style={{ color: '#ffffff' }} />
                           ) : (
-                            <Save className="h-4 w-4" />
+                            <Save className="h-4 w-4" style={{ color: '#ffffff' }} />
                           )}
-                          <span style={{ color: 'white' }}>{printerSaving ? 'Saving...' : 'Save'}</span>
+                          <span style={{ color: '#ffffff', fontWeight: 500 }}>{printerSaving ? 'Saving...' : 'Save'}</span>
                         </button>
                       </div>
                     </div>
@@ -772,15 +783,20 @@ export default function SettingsPage() {
                           <button
                             onClick={sendToPrinterNow}
                             disabled={sendingToPrinter || !printerSettings.printerEmail}
-                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ color: 'white' }}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                              backgroundColor: '#2563eb',
+                              color: '#ffffff',
+                              border: 'none',
+                              cursor: sendingToPrinter || !printerSettings.printerEmail ? 'not-allowed' : 'pointer'
+                            }}
                           >
                             {sendingToPrinter ? (
-                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              <RefreshCw className="h-4 w-4 animate-spin" style={{ color: '#ffffff' }} />
                             ) : (
-                              <Send className="h-4 w-4" />
+                              <Send className="h-4 w-4" style={{ color: '#ffffff' }} />
                             )}
-                            <span style={{ color: 'white' }}>{sendingToPrinter ? 'Sending...' : 'Send All Pending Orders Now'}</span>
+                            <span style={{ color: '#ffffff', fontWeight: 500 }}>{sendingToPrinter ? 'Sending...' : 'Send All Pending Orders Now'}</span>
                           </button>
                           <p className="text-sm text-gray-500 mt-2">
                             This will immediately send all unsent orders to the printer email
