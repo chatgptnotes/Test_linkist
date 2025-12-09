@@ -4,6 +4,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { SessionStore } from './session-store'
 
+// Static UUID for PIN-based admin sessions
+// Using a well-formed UUID allows database operations that expect UUID type
+const ADMIN_SESSION_UUID = '00000000-0000-0000-0000-000000000001'
+
 // Auth configuration
 const AUTH_CONFIG: {
   adminRoutes: string[];
@@ -90,7 +94,7 @@ export async function getAuthenticatedUser(request: NextRequest): Promise<AuthSe
     if (isAdminSession) {
       // Create admin user from session token
       const adminUser: AuthUser = {
-        id: 'admin-session',
+        id: ADMIN_SESSION_UUID,
         email: 'admin@linkist.com',
         role: 'admin',
         email_verified: true,
@@ -101,7 +105,7 @@ export async function getAuthenticatedUser(request: NextRequest): Promise<AuthSe
         user: adminUser,
         isAuthenticated: true,
         isAdmin: true,
-        sessionId: 'admin-session',
+        sessionId: ADMIN_SESSION_UUID,
       }
     }
 

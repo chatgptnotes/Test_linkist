@@ -154,7 +154,7 @@ export const SupabaseProfileStore = {
       existingProfile = profileResult?.profiles
       fetchError = error
     } else {
-      // Try to find any existing profile for this user
+      // Try to find any existing profile for this user via junction table
       const { data: profileResult, error } = await supabase
         .from('profile_users')
         .select(`
@@ -166,6 +166,23 @@ export const SupabaseProfileStore = {
 
       existingProfile = profileResult?.profiles
       fetchError = error
+
+      // FALLBACK: If no junction entry found, check profiles table directly by email
+      // This handles cases where profile exists but junction table link is missing (e.g., after migration)
+      if (!existingProfile && input.email) {
+        console.log('🔍 [SupabaseProfileStore] No junction entry found, checking profiles table by email...')
+        const { data: profileByEmail, error: emailError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', input.email)
+          .maybeSingle()
+
+        if (profileByEmail && !emailError) {
+          console.log('✅ [SupabaseProfileStore] Found existing profile by email, will update it')
+          existingProfile = profileByEmail
+          fetchError = null  // Clear fetchError so UPDATE path is taken
+        }
+      }
     }
 
     if (existingProfile && !fetchError) {

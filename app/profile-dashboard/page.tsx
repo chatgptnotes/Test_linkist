@@ -236,16 +236,62 @@ export default function AccountPage() {
       // Load analytics data
       loadAnalyticsData(userEmail);
 
-      // Load profile data from database API
+      // Load profile data from database API (using /api/profiles which works correctly)
       try {
         console.log('🔍 Fetching profile data from database for:', userEmail);
-        const profileResponse = await fetch(`/api/profiles/get?email=${encodeURIComponent(userEmail)}`);
+        const profileResponse = await fetch('/api/profiles');
 
         if (profileResponse.ok) {
           const profileResult = await profileResponse.json();
-          if (profileResult.success && profileResult.profile) {
-            console.log('✅ Profile data loaded from database:', profileResult.profile);
-            setProfileData(profileResult.profile);
+          if (profileResult.success && profileResult.profiles && profileResult.profiles.length > 0) {
+            // Get the first (most recent) profile and map it to dashboard format
+            const dbProfile = profileResult.profiles[0];
+            console.log('✅ Profile data loaded from database:', dbProfile);
+
+            // Map database profile to dashboard format (matching the structure expected by the component)
+            const mappedProfile = {
+              id: dbProfile.id,
+              firstName: dbProfile.first_name,
+              lastName: dbProfile.last_name,
+              first_name: dbProfile.first_name,
+              last_name: dbProfile.last_name,
+              email: dbProfile.email,
+              primaryEmail: dbProfile.email,
+              mobileNumber: dbProfile.phone_number,
+              phone_number: dbProfile.phone_number,
+              customUrl: dbProfile.custom_url,
+              custom_url: dbProfile.custom_url,
+              profileUrl: dbProfile.profile_url,
+              profile_url: dbProfile.profile_url,
+              jobTitle: dbProfile.job_title,
+              job_title: dbProfile.job_title,
+              companyName: dbProfile.company_name,
+              company_name: dbProfile.company_name,
+              industry: dbProfile.industry,
+              skills: dbProfile.skills,
+              professionalSummary: dbProfile.professional_summary,
+              professional_summary: dbProfile.professional_summary,
+              profilePhoto: dbProfile.profile_photo_url || dbProfile.avatar_url,
+              profile_photo_url: dbProfile.profile_photo_url,
+              avatar_url: dbProfile.avatar_url,
+              services: dbProfile.services || [],
+              preferences: dbProfile.preferences || {},
+              displaySettings: dbProfile.display_settings || {},
+              display_settings: dbProfile.display_settings || {},
+              isFounderMember: dbProfile.is_founder_member,
+              is_founder_member: dbProfile.is_founder_member,
+              // Social Media URLs (from social_links JSONB)
+              linkedinUrl: dbProfile.social_links?.linkedin || '',
+              instagramUrl: dbProfile.social_links?.instagram || '',
+              facebookUrl: dbProfile.social_links?.facebook || '',
+              twitterUrl: dbProfile.social_links?.twitter || '',
+              githubUrl: dbProfile.social_links?.github || '',
+              youtubeUrl: dbProfile.social_links?.youtube || '',
+              behanceUrl: dbProfile.social_links?.behance || '',
+              dribbbleUrl: dbProfile.social_links?.dribbble || '',
+            };
+
+            setProfileData(mappedProfile);
           } else {
             console.log('⚠️ No profile found in database, trying localStorage');
             loadProfileFromLocalStorage(userEmail);
@@ -602,7 +648,7 @@ export default function AccountPage() {
           <div className="flex flex-col gap-3">
             <div className="w-full">
               <div className="flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-[#263252] rounded-lg px-3 sm:px-4 py-3 overflow-hidden">
-                <code className="text-xs sm:text-sm font-mono text-[#263252] font-semibold truncate w-full">
+                <code className="text-xs sm:text-sm font-mono text-[#263252] font-semibold break-all w-full">
                   {(() => {
                     const baseUrl = getBaseUrl();
 

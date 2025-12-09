@@ -492,7 +492,8 @@
       "Read(//c/Users/Lenovo/OneDrive/Pictures/Screenshots/**)",
       "Bash(nul)",
       "Bash(temp_original.tsx)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(/opt/homebrew/opt/postgresql@16/bin/psql \"postgresql://postgres.xxqnyrppgvjspstnsiis:8-Y6JnVjerHGnq&@aws-0-ap-south-1.pooler.supabase.com:6543/postgres\" -f \"/Users/murali/Downloads/LINKIST_SUPABASE_BACKUP\")"
     ],
     "deny": [],
     "ask": []
