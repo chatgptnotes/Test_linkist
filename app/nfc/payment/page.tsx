@@ -597,7 +597,8 @@ export default function NFCPaymentPage() {
           amount: getFinalAmount(),
           pricing: {
             ...orderData.pricing,
-            total: getFinalAmount()
+            total: getFinalAmount(),
+            voucherAmount: voucherAmount || 0
           },
           voucherCode: voucherCode || null,
           voucherDiscount: voucherDiscount || 0,

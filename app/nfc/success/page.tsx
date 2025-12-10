@@ -138,81 +138,72 @@ export default function SuccessPage() {
 
               <div className="pt-3 space-y-2">
                 {(() => {
-                  // Use actual pricing data from order instead of backwards calculation
-                  const finalTotal = orderData.pricing?.total || orderData.amount || 0;
-                  const voucherPercent = orderData.voucherDiscount || 0;
-
-                  // Get actual pricing breakdown from order data
-                  const materialPrice = orderData.pricing?.materialPrice || 0;
+                  // Use exact pricing data from order (passed from payment page)
+                  const materialPrice = orderData.pricing?.materialPrice || 99;
                   const appSubscriptionPrice = orderData.pricing?.appSubscriptionPrice || 0;
                   const quantity = orderData.cardConfig?.quantity || orderData.quantity || 1;
+                  const taxAmount = orderData.pricing?.taxAmount || orderData.pricing?.tax || 0;
 
-                  // Calculate subtotal (material + app subscription)
-                  const subtotalBeforeDiscount = (materialPrice * quantity) + (appSubscriptionPrice * quantity);
-
-                  // Get actual tax amount from order data (or calculate if not available)
-                  let taxAmount = orderData.pricing?.taxAmount || orderData.pricing?.tax || 0;
-                  let taxLabel = 'VAT (5%)';
-                  let taxRate = 0.05;
-
-                  // Determine correct tax rate based on country
+                  // Determine tax label based on country
                   const country = orderData.shipping?.country || '';
-                  if (country === 'IN' || country === 'India') {
-                    taxRate = 0.18;
-                    taxLabel = 'GST (18%)';
-                    // Recalculate tax if not provided correctly
-                    if (!taxAmount || taxAmount < subtotalBeforeDiscount * 0.15) {
-                      taxAmount = subtotalBeforeDiscount * taxRate;
-                    }
-                  } else if (country === 'AE' || country === 'United Arab Emirates' || country === 'UAE') {
-                    taxRate = 0.05;
-                    taxLabel = 'VAT (5%)';
-                    if (!taxAmount) {
-                      taxAmount = subtotalBeforeDiscount * taxRate;
-                    }
-                  } else {
-                    // Default tax rate for other countries
-                    if (!taxAmount) {
-                      taxAmount = subtotalBeforeDiscount * taxRate;
-                    }
-                  }
+                  const isIndia = country === 'IN' || country === 'India';
+                  const taxLabel = isIndia ? 'GST (18%)' : 'VAT (5%)';
 
-                  // Calculate total before discount
-                  const totalBeforeDiscount = subtotalBeforeDiscount + taxAmount;
+                  // Calculate subtotal (before tax and discount)
+                  const subtotalBeforeTax = (materialPrice * quantity) + (appSubscriptionPrice * quantity);
+                  const subtotalWithTax = subtotalBeforeTax + taxAmount;
 
-                  // Calculate voucher discount amount
-                  const voucherDiscountAmount = voucherPercent > 0
-                    ? (totalBeforeDiscount * voucherPercent / 100)
-                    : 0;
+                  // Get voucher discount amount directly from order data
+                  const voucherAmount = orderData.pricing?.voucherAmount || 0;
+                  const voucherPercent = orderData.voucherDiscount || 0;
 
                   return (
                     <>
+                      {/* Base Material - matching payment page */}
                       <div className="flex justify-between text-gray-600">
-                        <span>Subtotal</span>
-                        <span>${subtotalBeforeDiscount.toFixed(2)}</span>
+                        <span>Base Material x {quantity}</span>
+                        <span>${(materialPrice * quantity).toFixed(2)}</span>
                       </div>
+
+                      {/* App Subscription - only show if applicable */}
+                      {appSubscriptionPrice > 0 && (
+                        <div className="flex justify-between text-gray-600">
+                          <span>1 Year Linkist App Subscription × {quantity}</span>
+                          <span>${(appSubscriptionPrice * quantity).toFixed(2)}</span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between text-gray-600">
                         <span>Customization</span>
                         <span className="text-green-600">Included</span>
                       </div>
                       <div className="flex justify-between text-gray-600">
-                        <span>Shipping ({orderData.shipping?.country === 'United Arab Emirates' ? 'UAE' : orderData.shipping?.country || 'AE'})</span>
-                        <span className="text-green-600">Free</span>
+                        <span>Shipping ({orderData.shipping?.country === 'United Arab Emirates' ? 'UAE' : orderData.shipping?.country || 'IN'})</span>
+                        <span className="text-green-600">Included</span>
                       </div>
                       <div className="flex justify-between text-gray-600">
                         <span>{taxLabel}</span>
                         <span>${taxAmount.toFixed(2)}</span>
                       </div>
+
+                      {/* Subtotal before discount */}
+                      <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between text-gray-600">
+                        <span>Subtotal</span>
+                        <span>${subtotalWithTax.toFixed(2)}</span>
+                      </div>
+
                       {orderData.shipping?.isFounderMember && (
                         <div className="flex justify-between text-green-600">
                           <span>Founder Member Benefits (10% off)</span>
                           <span>Included</span>
                         </div>
                       )}
-                      {orderData.voucherCode && orderData.voucherDiscount && (
+
+                      {/* Voucher Discount - use stored amount */}
+                      {orderData.voucherCode && voucherPercent > 0 && (
                         <div className="flex justify-between text-green-600 font-medium">
-                          <span>Voucher Discount ({orderData.voucherCode} - {orderData.voucherDiscount}%)</span>
-                          <span>-${voucherDiscountAmount.toFixed(2)}</span>
+                          <span>Voucher Discount ({orderData.voucherCode} - {voucherPercent}%)</span>
+                          <span>-${voucherAmount > 0 ? voucherAmount.toFixed(2) : ((subtotalWithTax * voucherPercent / 100).toFixed(2))}</span>
                         </div>
                       )}
                     </>
